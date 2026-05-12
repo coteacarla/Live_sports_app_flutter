@@ -185,11 +185,8 @@ class _LeaguesSection extends StatelessWidget {
     // Tennis
     'ATP Tour',
     'WTA Tour',
-    // Volleyball
-    "FIVB Women's Nations League",
-    "FIVB Men's Nations League",
-    "NCAA Women's Volleyball",
-    "NCAA Men's Volleyball",
+    // Hockey
+    'NHL',
   };
 
   @override

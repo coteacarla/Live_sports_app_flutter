@@ -542,7 +542,7 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
     final sportLabel = switch (sportId) {
       'basketball' => 'Basketball update',
       'tennis' => 'Tennis update',
-      'volleyball' => 'Volleyball update',
+      'hockey' => 'Hockey update',
       _ => 'Live update',
     };
 
@@ -958,7 +958,7 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
     if (sport == 'soccer') return 'football';
     if (sport == 'basketball') return 'basketball';
     if (sport == 'tennis') return 'tennis';
-    if (sport == 'volleyball') return 'volleyball';
+    if (sport == 'hockey') return 'hockey';
 
     final league = rawEvent.league;
     final leagueName = (league?.name ?? '').toLowerCase();
@@ -986,8 +986,8 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
       return 'football';
     }
 
-    if (leagueName.contains('volleyball') || leagueName.contains('fivb')) {
-      return 'volleyball';
+    if (leagueName.contains('hockey') || leagueName.contains('nhl')) {
+      return 'hockey';
     }
 
     if (sport != null && sport.isNotEmpty && sport != 'unknown') {
@@ -996,7 +996,7 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
       }
       if (sport.contains('basketball')) return 'basketball';
       if (sport.contains('tennis')) return 'tennis';
-      if (sport.contains('volleyball')) return 'volleyball';
+      if (sport.contains('hockey')) return 'hockey';
       return sport;
     }
 
@@ -1008,7 +1008,7 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
     if (sportPath.contains('soccer')) return 'football';
     if (sportPath.contains('basketball')) return 'basketball';
     if (sportPath.contains('tennis')) return 'tennis';
-    if (sportPath.contains('volleyball')) return 'volleyball';
+    if (sportPath.contains('hockey')) return 'hockey';
     return sportPath;
   }
 

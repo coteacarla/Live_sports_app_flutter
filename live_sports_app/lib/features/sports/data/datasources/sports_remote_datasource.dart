@@ -26,7 +26,7 @@ class SportsRemoteDataSourceImpl implements SportsRemoteDataSource {
     'football',
     'basketball',
     'tennis',
-    'volleyball',
+    'hockey',
   };
 
   static const Map<String, String> _sportIdToName = {
@@ -34,7 +34,7 @@ class SportsRemoteDataSourceImpl implements SportsRemoteDataSource {
     'football': 'Soccer',
     'basketball': 'Basketball',
     'tennis': 'Tennis',
-    'volleyball': 'Volleyball',
+    'hockey': 'Hockey',
     'baseball': 'Baseball',
     'american-football': 'American Football',
     'american football': 'American Football',
@@ -65,11 +65,8 @@ class SportsRemoteDataSourceImpl implements SportsRemoteDataSource {
     // Tennis
     'ATP Tour': '2025',
     'WTA Tour': '2025',
-    // Volleyball
-    "FIVB Women's Nations League": '2025',
-    "FIVB Men's Nations League": '2025',
-    "NCAA Women's Volleyball": '2024-2025',
-    "NCAA Men's Volleyball": '2024-2025',
+    // Hockey
+    'NHL': '2025-2026',
   };
 
   // Static league definitions guaranteed to appear for every sport,
@@ -136,26 +133,11 @@ class SportsRemoteDataSourceImpl implements SportsRemoteDataSource {
         currentSeason: '2025',
       ),
     ],
-    'volleyball': [
+    'hockey': [
       LeagueModel(
-        id: 's_fivb_w', name: "FIVB Women's Nations League",
-        sportType: SportType.volleyball, type: LeagueType.international,
-        currentSeason: '2025',
-      ),
-      LeagueModel(
-        id: 's_fivb_m', name: "FIVB Men's Nations League",
-        sportType: SportType.volleyball, type: LeagueType.international,
-        currentSeason: '2025',
-      ),
-      LeagueModel(
-        id: 's_ncaa_wv', name: "NCAA Women's Volleyball",
-        sportType: SportType.volleyball, type: LeagueType.domestic,
-        country: 'United States', currentSeason: '2024-2025',
-      ),
-      LeagueModel(
-        id: 's_ncaa_mv', name: "NCAA Men's Volleyball",
-        sportType: SportType.volleyball, type: LeagueType.domestic,
-        country: 'United States', currentSeason: '2024-2025',
+        id: 's_nhl', name: 'NHL',
+        sportType: SportType.hockey, type: LeagueType.domestic,
+        country: 'United States', currentSeason: '2025-2026',
       ),
     ],
   };
@@ -182,9 +164,9 @@ class SportsRemoteDataSourceImpl implements SportsRemoteDataSource {
         isPopular: true,
       ),
       const SportModel(
-        id: 'volleyball',
-        name: 'Volleyball',
-        slug: 'volleyball',
+        id: 'hockey',
+        name: 'Hockey',
+        slug: 'hockey',
         isPopular: true,
       ),
     ];

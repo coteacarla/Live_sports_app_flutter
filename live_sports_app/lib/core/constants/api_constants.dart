@@ -27,11 +27,8 @@ class ApiConstants {
       'https://site.api.espn.com/apis/site/v2/sports/tennis/atp/scoreboard',
       'https://site.api.espn.com/apis/site/v2/sports/tennis/wta/scoreboard',
     ],
-    'volleyball': [
-      'https://site.api.espn.com/apis/site/v2/sports/volleyball/fivb-volleyball-womens/scoreboard',
-      'https://site.api.espn.com/apis/site/v2/sports/volleyball/fivb-volleyball-mens/scoreboard',
-      'https://site.api.espn.com/apis/site/v2/sports/volleyball/womens-college-volleyball/scoreboard',
-      'https://site.api.espn.com/apis/site/v2/sports/volleyball/mens-college-volleyball/scoreboard',
+    'hockey': [
+      'https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard',
     ],
   };
 
@@ -64,11 +61,8 @@ class ApiConstants {
     'ATP Tour':  'tennis/atp',
     'WTA Tour':  'tennis/wta',
 
-    // ── Volleyball ─────────────────────────────────────────────────────────
-    'FIVB Women\'s Nations League': 'volleyball/fivb-volleyball-womens',
-    'FIVB Men\'s Nations League':   'volleyball/fivb-volleyball-mens',
-    'NCAA Women\'s Volleyball':     'volleyball/womens-college-volleyball',
-    'NCAA Men\'s Volleyball':       'volleyball/mens-college-volleyball',
+    // ── Hockey ────────────────────────────────────────────────────────────
+    'NHL':                         'hockey/nhl',
   };
 
   // TheSportsDB league IDs used for schedule/results fallback.
@@ -89,9 +83,7 @@ class ApiConstants {
       '4516', // ATP Tour
       '4517', // WTA Tour
     ],
-    'volleyball': [
-      '4520', // FIVB Nations League (Men)
-      '4521', // FIVB Nations League (Women)
+    'hockey': [
     ],
   };
 }
