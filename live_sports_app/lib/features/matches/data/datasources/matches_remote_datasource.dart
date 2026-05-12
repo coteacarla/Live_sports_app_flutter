@@ -103,7 +103,10 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
             _metaIndexCachedAt ??= DateTime.now().toUtc();
           }
 
-          final normalizedSport = expectedSport ?? _sportIdFromEspnEvent(rawEvent);
+          // Prefer endpoint path for sport ID — more reliable than event-level fields.
+          final normalizedSport = expectedSport
+              ?? (endpointPath != null ? _canonicalSportId(endpointPath.sportPath) : null)
+              ?? _sportIdFromEspnEvent(rawEvent);
           if (sportId != null &&
               sportId.isNotEmpty &&
               normalizedSport != _canonicalSportId(sportId)) {
@@ -163,13 +166,21 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
     required PaginationParams pagination,
     MatchFilters filters = const MatchFilters(),
   }) async {
+    final leagueEndpoints = _leagueEndpoints(filters.leagueId);
     final all = await _getResultsWindow(
       sportId: filters.sportId,
       baseDate: filters.from,
-      endpoints: _leagueEndpoints(filters.leagueId),
+      endpoints: leagueEndpoints,
     );
 
-    final filtered = _applyFilters(all, filters)
+    // When a league-specific endpoint was used, ESPN already scoped the results
+    // to that league. Don't filter by leagueId name (e.g. 'soccer/esp.1' would
+    // never substring-match 'La Liga'), just apply date + sport filters.
+    final effectiveFilters = leagueEndpoints != null
+        ? MatchFilters(sportId: filters.sportId, from: filters.from, to: filters.to)
+        : filters;
+
+    final filtered = _applyFilters(all, effectiveFilters)
         .where((match) => match.status == MatchStatus.finished)
         .toList(growable: false);
 
@@ -182,13 +193,19 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
     required PaginationParams pagination,
     MatchFilters filters = const MatchFilters(),
   }) async {
+    final leagueEndpoints = _leagueEndpoints(filters.leagueId);
     final all = await _getResultsWindow(
       sportId: filters.sportId,
       baseDate: filters.from,
-      endpoints: _leagueEndpoints(filters.leagueId),
+      endpoints: leagueEndpoints,
     );
 
-    final filtered = _applyFilters(all, filters)
+    // Same as getPastMatches: league already scoped by endpoint, skip name match.
+    final effectiveFilters = leagueEndpoints != null
+        ? MatchFilters(sportId: filters.sportId, from: filters.from, to: filters.to)
+        : filters;
+
+    final filtered = _applyFilters(all, effectiveFilters)
         .where((match) => match.status == MatchStatus.scheduled)
         .toList(growable: false);
 
@@ -541,7 +558,7 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
 
     final sportLabel = switch (sportId) {
       'basketball' => 'Basketball update',
-      'tennis' => 'Tennis update',
+      'rugby' => 'Rugby update',
       'hockey' => 'Hockey update',
       _ => 'Live update',
     };
@@ -586,17 +603,59 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
   }) async {
     final base = (baseDate ?? DateTime.now()).toUtc();
     final resolvedEndpoints = endpoints ?? _resolveEspnEndpoints(sportId);
-    final dated = await _collectEspnMatches(
-      fromOffsetDays: -7,
-      toOffsetDays: 7,
+
+    // When a specific league endpoint is provided the caller wants matches on
+    // the exact selected date — not the current matchday. Use only the dated
+    // fetch so the date window in _applyFilters is respected.
+    if (endpoints != null) {
+      final dated = await _collectEspnMatches(
+        fromOffsetDays: 0,
+        toOffsetDays: 0,
+        sportId: sportId,
+        baseDate: base,
+        endpoints: resolvedEndpoints,
+      );
+      if (dated.isNotEmpty) return dated;
+
+      // ESPN sometimes needs a ±1 day window for timezone edge cases.
+      return _collectEspnMatches(
+        fromOffsetDays: -1,
+        toOffsetDays: 1,
+        sportId: sportId,
+        baseDate: base,
+        endpoints: resolvedEndpoints,
+      );
+    }
+
+    // No league filter: fetch the specific day AND the current/undated window
+    // in parallel. Some ESPN endpoints honour ?dates=; others ignore it and
+    // return the current round — running both guarantees we catch either.
+    final results = await Future.wait([
+      _collectEspnMatches(
+        fromOffsetDays: 0,
+        toOffsetDays: 0,
+        sportId: sportId,
+        baseDate: base,
+        endpoints: resolvedEndpoints,
+      ),
+      _fetchCurrentScoreboards(resolvedEndpoints, sportId: sportId),
+    ]);
+
+    final seen = <String>{};
+    final all = <MatchModel>[];
+    for (final m in results.expand((list) => list)) {
+      if (seen.add(m.id)) all.add(m);
+    }
+    if (all.isNotEmpty) return all;
+
+    // Last resort: ±3 day window (handles endpoints that need a wider range).
+    return _collectEspnMatches(
+      fromOffsetDays: -3,
+      toOffsetDays: 3,
       sportId: sportId,
       baseDate: base,
       endpoints: resolvedEndpoints,
     );
-    if (dated.isNotEmpty) return dated;
-
-    // Fallback for endpoints that ignore the ?dates= param (e.g. tennis).
-    return _fetchCurrentScoreboards(resolvedEndpoints, sportId: sportId);
   }
 
   Future<EspnScoreboardResponse> _fetchEspnScoreboardForDate({
@@ -664,8 +723,9 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
               _metaIndexCachedAt ??= DateTime.now().toUtc();
             }
 
-            final normalizedSport =
-                expectedSport ?? _sportIdFromEspnEvent(rawEvent);
+            final normalizedSport = expectedSport
+                ?? (endpointPath != null ? _canonicalSportId(endpointPath.sportPath) : null)
+                ?? _sportIdFromEspnEvent(rawEvent);
             if (sportId != null &&
                 sportId.isNotEmpty &&
                 normalizedSport != _canonicalSportId(sportId)) {
@@ -873,9 +933,17 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
 
     final matchStatus = completed
         ? MatchStatus.finished
-        : (statusName == 'status_in_progress' || statusName.contains('in'))
+        : (statusName.contains('progress') || statusName.contains('in_progress') ||
+                statusName == 'status_in_progress')
             ? MatchStatus.live
-            : MatchStatus.scheduled;
+            : (statusName.contains('halftime') || statusName.contains('half_time') ||
+                    statusName.contains('pause') || statusName.contains('intermission'))
+                ? MatchStatus.paused
+                : (statusName.contains('postponed'))
+                    ? MatchStatus.postponed
+                    : (statusName.contains('cancel'))
+                        ? MatchStatus.cancelled
+                        : MatchStatus.scheduled;
 
     final league = rawEvent.league;
     final eventLeagueId = (league?.name ??
@@ -894,7 +962,7 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
     var awayTeam = _espnCompetitorToTeam(away);
 
     // Last-resort fallback: parse "Player A vs. Player B" from the event title.
-    // Covers individual sports (tennis, golf) where competitor parsing may fail.
+    // Covers individual sports (rugby, golf) where competitor parsing may fail.
     if (homeTeam.name == 'Unknown' || awayTeam.name == 'Unknown') {
       for (final sep in const [' vs. ', ' vs ']) {
         if (rawEvent.name.contains(sep)) {
@@ -957,7 +1025,7 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
     final sport = rawEvent.sport?.slug?.toLowerCase();
     if (sport == 'soccer') return 'football';
     if (sport == 'basketball') return 'basketball';
-    if (sport == 'tennis') return 'tennis';
+    if (sport == 'rugby') return 'rugby';
     if (sport == 'hockey') return 'hockey';
 
     final league = rawEvent.league;
@@ -967,14 +1035,10 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
     if (leagueName.contains('nba') || leagueName.contains('basketball')) {
       return 'basketball';
     }
-    if (leagueName.contains('atp') ||
-        leagueName.contains('wta') ||
-        leagueName.contains('tennis') ||
-        leagueName.contains('us open') ||
-        leagueName.contains('wimbledon') ||
-        leagueName.contains('french open') ||
-        leagueName.contains('australian open')) {
-      return 'tennis';
+    if (leagueName.contains('rugby') ||
+        leagueName.contains('six nations') ||
+        leagueName.contains('rugby championship')) {
+      return 'rugby';
     }
     if (leagueName.contains('premier') ||
         leagueName.contains('la liga') ||
@@ -995,7 +1059,7 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
         return 'football';
       }
       if (sport.contains('basketball')) return 'basketball';
-      if (sport.contains('tennis')) return 'tennis';
+      if (sport.contains('rugby')) return 'rugby';
       if (sport.contains('hockey')) return 'hockey';
       return sport;
     }
@@ -1007,7 +1071,7 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
     final sportPath = meta.sportPath.toLowerCase();
     if (sportPath.contains('soccer')) return 'football';
     if (sportPath.contains('basketball')) return 'basketball';
-    if (sportPath.contains('tennis')) return 'tennis';
+    if (sportPath.contains('rugby')) return 'rugby';
     if (sportPath.contains('hockey')) return 'hockey';
     return sportPath;
   }

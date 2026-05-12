@@ -182,11 +182,13 @@ class _LeaguesSection extends StatelessWidget {
     'WNBA',
     "NCAA Men's Basketball",
     "NCAA Women's Basketball",
-    // Tennis
-    'ATP Tour',
-    'WTA Tour',
+    // Volleyball
+    "NCAA Women's Volleyball",
+    "NCAA Men's Volleyball",
     // Hockey
     'NHL',
+    "NCAA Men's Hockey",
+    "NCAA Women's Hockey",
   };
 
   @override

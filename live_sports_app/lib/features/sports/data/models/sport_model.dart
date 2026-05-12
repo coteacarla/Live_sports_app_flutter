@@ -34,8 +34,8 @@ class SportModel extends Sport {
               .replaceAll(RegExp(r'\s+'), '-'),
         ),
         iconUrl: (json['strSportThumb'] ?? json['icon_url'])?.toString(),
-        isPopular: const {'Soccer', 'Basketball', 'Tennis'}
-            .contains((json['strSport'] ?? '').toString()),
+        isPopular: const {'Soccer', 'Basketball', 'Rugby'}
+          .contains((json['strSport'] ?? '').toString()),
       );
 
   static String _canonicalSlug(String slug) {

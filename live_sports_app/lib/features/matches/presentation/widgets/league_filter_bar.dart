@@ -32,11 +32,13 @@ class LeagueFilterBar extends ConsumerWidget {
     'WNBA',
     "NCAA Men's Basketball",
     "NCAA Women's Basketball",
-    // Tennis
-    'ATP Tour',
-    'WTA Tour',
+    // Volleyball
+    "NCAA Women's Volleyball",
+    "NCAA Men's Volleyball",
     // Hockey
     'NHL',
+    "NCAA Men's Hockey",
+    "NCAA Women's Hockey",
   };
 
   @override
@@ -75,16 +77,14 @@ class LeagueFilterBar extends ConsumerWidget {
     void handleSelect(String? leagueId, [String? leagueSportId]) {
       if (onSelectLeague != null) {
         onSelectLeague!(leagueId, leagueSportId);
-      } else {
-        ref.read(selectedLeagueIdProvider.notifier).setLeagueId(leagueId);
-        // If a league was selected, also update the selected sport so
-        // Results/Upcoming use the matching sport filter instead of the
-        // previously selected sport (avoids empty lists when league sport
-        // differs).
-        if (leagueSportId != null) {
-          ref.read(selectedSportIdProvider.notifier).setSportId(leagueSportId);
-        }
+        return;
       }
+      // Set sport FIRST: setSportId may reset selectedLeagueId internally, so
+      // calling it after setLeagueId would wipe the selection just made.
+      if (leagueSportId != null) {
+        ref.read(selectedSportIdProvider.notifier).setSportId(leagueSportId);
+      }
+      ref.read(selectedLeagueIdProvider.notifier).setLeagueId(leagueId);
     }
 
     // 4. UI Rendering using ListView.builder

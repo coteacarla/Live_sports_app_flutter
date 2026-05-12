@@ -38,14 +38,7 @@ class _LiveMatchesView extends ConsumerWidget {
             SliverPadding(
               padding: EdgeInsets.all(spacingSmall),
               sliver: SliverToBoxAdapter(
-                child: LeagueFilterBar(
-                  onSelectLeague: (id, leagueSportId) {
-                    ref.read(selectedLeagueIdProvider.notifier).setLeagueId(id);
-                    if (leagueSportId != null) {
-                      ref.read(selectedSportIdProvider.notifier).setSportId(leagueSportId);
-                    }
-                  },
-                ),
+                child: const LeagueFilterBar(),
               ),
             ),
 

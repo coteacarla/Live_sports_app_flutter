@@ -263,17 +263,24 @@ class LiveMatches extends _$LiveMatches {
         (matches) {
           final filtered = _filterMatches(matches);
 
-          final previousIds = state.matches.map((m) => m.id).toSet();
-          final newlyLive = filtered.where(
-            (m) =>
-                m.isLive &&
-                !previousIds.contains(m.id) &&
-                ref.read(matchNotificationPreferencesProvider.notifier).isEnabled(m.id),
-          );
-          for (final m in newlyLive) {
+          final previousScores = {
+            for (final m in state.matches) m.id: (m.homeScore, m.awayScore),
+          };
+          final notifier = ref.read(matchNotificationPreferencesProvider.notifier);
+          final notificationService = ref.read(localNotificationServiceProvider);
+          for (final m in filtered) {
+            if (!m.isLive || !notifier.isEnabled(m.id)) continue;
+            final prev = previousScores[m.id];
+            final isNew = prev == null;
+            final scoreChanged = prev != null &&
+                (prev.$1 != m.homeScore || prev.$2 != m.awayScore);
+            if (!isNew && !scoreChanged) continue;
+            final title = isNew
+                ? 'Live now: ${m.homeTeam.name} vs ${m.awayTeam.name}'
+                : 'Score update: ${m.homeTeam.name} vs ${m.awayTeam.name}';
             unawaited(
-              ref.read(localNotificationServiceProvider).showInstantNotification(
-                title: 'Live now: ${m.homeTeam.name} vs ${m.awayTeam.name}',
+              notificationService.showInstantNotification(
+                title: title,
                 body:
                     '${m.homeTeam.name} ${m.homeScore ?? 0} - ${m.awayScore ?? 0} ${m.awayTeam.name}',
               ),
@@ -302,18 +309,17 @@ class LiveMatches extends _$LiveMatches {
   }
 
   List<Match> _filterMatches(List<Match> matches) {
-    final nowUtc = DateTime.now().toUtc();
-    final startOfToday = DateTime.utc(nowUtc.year, nowUtc.month, nowUtc.day);
-    final endOfToday = startOfToday.add(const Duration(days: 1));
+    final leagueId = ref.read(selectedLeagueIdProvider);
 
     return matches
         .where((m) {
           if (m.sportId.toLowerCase() != _sportId.toLowerCase()) return false;
-          if (m.isLive) return true;
-          if (!m.isScheduled) return false;
-          // Only upcoming fixtures for today, not future days.
-          return !m.scheduledAt.isBefore(startOfToday) &&
-              m.scheduledAt.isBefore(endOfToday);
+          if (leagueId != null && leagueId.isNotEmpty) {
+            final ml = m.leagueId.toLowerCase();
+            final fl = leagueId.toLowerCase();
+            if (ml.isEmpty || (!ml.contains(fl) && !fl.contains(ml))) return false;
+          }
+          return m.isLive;
         })
         .toList(growable: false);
   }

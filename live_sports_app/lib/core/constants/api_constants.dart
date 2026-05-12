@@ -8,7 +8,8 @@ class ApiConstants {
 
   static const requestTimeoutSeconds = 15;
 
-  // ESPN public scoreboard feeds — top 4 (or more) live endpoints per sport.
+  // ESPN public scoreboard feeds.
+  // Note: FIVB volleyball endpoints (fivb-volleyball-womens/mens) return HTTP 400 and are excluded.
   static const espnLiveEndpointsBySport = <String, List<String>>{
     'football': [
       'https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard',
@@ -23,12 +24,14 @@ class ApiConstants {
       'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard',
       'https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/scoreboard',
     ],
-    'tennis': [
-      'https://site.api.espn.com/apis/site/v2/sports/tennis/atp/scoreboard',
-      'https://site.api.espn.com/apis/site/v2/sports/tennis/wta/scoreboard',
+    'volleyball': [
+      'https://site.api.espn.com/apis/site/v2/sports/volleyball/womens-college-volleyball/scoreboard',
+      'https://site.api.espn.com/apis/site/v2/sports/volleyball/mens-college-volleyball/scoreboard',
     ],
     'hockey': [
       'https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard',
+      'https://site.api.espn.com/apis/site/v2/sports/hockey/mens-college-hockey/scoreboard',
+      'https://site.api.espn.com/apis/site/v2/sports/hockey/womens-college-hockey/scoreboard',
     ],
   };
 
@@ -36,20 +39,20 @@ class ApiConstants {
   // Used by LeagueFilterBar to build the exact URL when a chip is tapped.
   static const leagueNameToEspnEndpointSlug = <String, String>{
     // ── Football / Soccer ──────────────────────────────────────────────────
-    'Premier League':       'soccer/eng.1',
-    'La Liga':              'soccer/esp.1',
-    'Bundesliga':           'soccer/ger.1',
-    'Serie A':              'soccer/ita.1',
-    'Serie A TIM':          'soccer/ita.1',
-    'Ligue 1':              'soccer/fra.1',
-    'Championship':         'soccer/eng.2',
-    'Scottish Premier League': 'soccer/sco.1',
-    'Scottish Championship':   'soccer/sco.2',
-    'Eredivisie':           'soccer/ned.1',
-    'Primeira Liga':        'soccer/por.1',
-    'Liga Portugal Bwin':   'soccer/por.1',
-    'Super Lig':            'soccer/tur.1',
-    'Süper Lig':            'soccer/tur.1',
+    'Premier League':            'soccer/eng.1',
+    'La Liga':                   'soccer/esp.1',
+    'Bundesliga':                'soccer/ger.1',
+    'Serie A':                   'soccer/ita.1',
+    'Serie A TIM':               'soccer/ita.1',
+    'Ligue 1':                   'soccer/fra.1',
+    'Championship':              'soccer/eng.2',
+    'Scottish Premier League':   'soccer/sco.1',
+    'Scottish Championship':     'soccer/sco.2',
+    'Eredivisie':                'soccer/ned.1',
+    'Primeira Liga':             'soccer/por.1',
+    'Liga Portugal Bwin':        'soccer/por.1',
+    'Super Lig':                 'soccer/tur.1',
+    'Süper Lig':                 'soccer/tur.1',
 
     // ── Basketball ─────────────────────────────────────────────────────────
     'NBA':                        'basketball/nba',
@@ -57,12 +60,14 @@ class ApiConstants {
     'NCAA Men\'s Basketball':     'basketball/mens-college-basketball',
     'NCAA Women\'s Basketball':   'basketball/womens-college-basketball',
 
-    // ── Tennis ─────────────────────────────────────────────────────────────
-    'ATP Tour':  'tennis/atp',
-    'WTA Tour':  'tennis/wta',
+    // ── Volleyball ─────────────────────────────────────────────────────────
+    'NCAA Women\'s Volleyball':   'volleyball/womens-college-volleyball',
+    'NCAA Men\'s Volleyball':     'volleyball/mens-college-volleyball',
 
-    // ── Hockey ────────────────────────────────────────────────────────────
-    'NHL':                         'hockey/nhl',
+    // ── Hockey ─────────────────────────────────────────────────────────────
+    'NHL':                          'hockey/nhl',
+    'NCAA Men\'s Hockey':           'hockey/mens-college-hockey',
+    'NCAA Women\'s Hockey':         'hockey/womens-college-hockey',
   };
 
   // TheSportsDB league IDs used for schedule/results fallback.
@@ -79,11 +84,9 @@ class ApiConstants {
       '4391', // NCAA Men's
       '4394', // EuroLeague
     ],
-    'tennis': [
-      '4516', // ATP Tour
-      '4517', // WTA Tour
-    ],
+    'volleyball': [],
     'hockey': [
+      '4380', // NHL
     ],
   };
 }

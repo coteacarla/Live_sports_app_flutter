@@ -282,14 +282,6 @@ _EspnCompetitor _$EspnCompetitorFromJson(Map<String, dynamic> json) {
 
   teamData['id'] ??= (json['id'] ?? '').toString();
 
-  // DEBUG — remove once tennis names are resolved.
-  if (teamData['displayName'] == null && teamData['name'] == null) {
-    print('[ESPN competitor] id=${json['id']} keys=${json.keys.toList()} '
-        'teamKeys=${teamData.keys.toList()} '
-        'hasTeam=${json['team'] != null} hasAthlete=${json['athlete'] != null} '
-        'hasAthletes=${json['athletes'] != null}');
-  }
-
   return _EspnCompetitor(
     id: (json['id'] ?? '').toString(),
     team: EspnTeam.fromJson(teamData),

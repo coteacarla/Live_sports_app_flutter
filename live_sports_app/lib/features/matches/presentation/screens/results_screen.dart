@@ -35,14 +35,7 @@ class _ResultsView extends ConsumerWidget {
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               sliver: SliverToBoxAdapter(
-                child: LeagueFilterBar(
-                  onSelectLeague: (id, leagueSportId) {
-                    ref.read(selectedLeagueIdProvider.notifier).setLeagueId(id);
-                    if (leagueSportId != null) {
-                      ref.read(selectedSportIdProvider.notifier).setSportId(leagueSportId);
-                    }
-                  },
-                ),
+                child: const LeagueFilterBar(),
               ),
             ),
 
