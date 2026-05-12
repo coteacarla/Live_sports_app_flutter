@@ -1,6 +1,5 @@
-import 'package:dartz/dartz.dart';
-
 import '../../../../core/error/failures.dart';
+import '../../../../core/result.dart';
 import '../entities/commentary.dart';
 import '../entities/match.dart';
 import '../entities/match_event.dart';
@@ -39,10 +38,10 @@ abstract class MatchesRepository {
 	// ── Live ──────────────────────────────────────────────────────────────────
 
 	/// Fetches all currently in-progress matches across all followed / popular leagues.
-	Future<Either<Failure, List<Match>>> getLiveMatches({String? sportId});
+	Future<Result<List<Match>, Failure>> getLiveMatches({String? sportId});
 
 	/// Fetches live matches filtered by a specific league.
-	Future<Either<Failure, List<Match>>> getLiveMatchesByLeague(
+	  Future<Result<List<Match>, Failure>> getLiveMatchesByLeague(
 		String leagueId, {
 		String? sportId,
 	});
@@ -50,7 +49,7 @@ abstract class MatchesRepository {
 	// ── Past / results ────────────────────────────────────────────────────────
 
 	/// Fetches completed matches, sorted most-recent first.
-	Future<Either<Failure, List<Match>>> getPastMatches({
+	  Future<Result<List<Match>, Failure>> getPastMatches({
 		required PaginationParams pagination,
 		MatchFilters filters = const MatchFilters(),
 	});
@@ -58,28 +57,28 @@ abstract class MatchesRepository {
 	// ── Scheduled ─────────────────────────────────────────────────────────────
 
 	/// Fetches upcoming fixtures sorted by kick-off time ascending.
-	Future<Either<Failure, List<Match>>> getScheduledMatches({
+	  Future<Result<List<Match>, Failure>> getScheduledMatches({
 		required PaginationParams pagination,
 		MatchFilters filters = const MatchFilters(),
 	});
 
 	/// Fetches fixtures for a specific calendar date (UTC).
-	Future<Either<Failure, List<Match>>> getMatchesByDate(DateTime date);
+	  Future<Result<List<Match>, Failure>> getMatchesByDate(DateTime date);
 
 	// ── Single match ──────────────────────────────────────────────────────────
 
 	/// Fetches full detail for a single match, including current score and status.
-	Future<Either<Failure, Match>> getMatchById(String matchId);
+	Future<Result<Match, Failure>> getMatchById(String matchId);
 
 	// ── Timeline / events ─────────────────────────────────────────────────────
 
 	/// Fetches all notable incidents (goals, cards, substitutions) for [matchId].
-	Future<Either<Failure, List<MatchEvent>>> getMatchEvents(String matchId);
+	Future<Result<List<MatchEvent>, Failure>> getMatchEvents(String matchId);
 
 	// ── Commentary ────────────────────────────────────────────────────────────
 
 	/// Fetches the live text commentary feed for [matchId].
-	Future<Either<Failure, List<Commentary>>> getMatchCommentary(
+	  Future<Result<List<Commentary>, Failure>> getMatchCommentary(
 		String matchId, {
 		int? since,
 	});

@@ -1,6 +1,5 @@
-import 'package:dartz/dartz.dart';
-
 import '../../../../core/error/failures.dart';
+import '../../../../core/result.dart';
 import '../entities/sport.dart';
 import '../repositories/sports_repository.dart';
 
@@ -9,7 +8,7 @@ class GetSports {
 
 	final SportsRepository _repository;
 
-	Future<Either<Failure, List<Sport>>> call() {
+	Future<Result<List<Sport>, Failure>> call() {
 		return _repository.getSports();
 	}
 }

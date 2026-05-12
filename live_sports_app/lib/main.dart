@@ -7,8 +7,20 @@ import 'core/storage/hive_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await HiveService.init();
-  await LocalNotificationService().init();
+  try {
+    await HiveService.init();
+  } catch (error, stackTrace) {
+    debugPrint('Hive initialization failed: $error');
+    debugPrintStack(stackTrace: stackTrace);
+  }
+
+  try {
+    await LocalNotificationService().init();
+  } catch (error, stackTrace) {
+    debugPrint('Notification initialization failed: $error');
+    debugPrintStack(stackTrace: stackTrace);
+  }
+
   runApp(const ProviderScope(child: MyApp()));
 }
 

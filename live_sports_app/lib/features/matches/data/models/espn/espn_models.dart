@@ -4,7 +4,7 @@ part 'espn_models.freezed.dart';
 part 'espn_models.g.dart';
 
 @freezed
-class EspnScoreboardResponse with _$EspnScoreboardResponse {
+abstract class EspnScoreboardResponse with _$EspnScoreboardResponse {
   const factory EspnScoreboardResponse({
     @Default([]) List<EspnEvent> events,
   }) = _EspnScoreboardResponse;
@@ -14,7 +14,7 @@ class EspnScoreboardResponse with _$EspnScoreboardResponse {
 }
 
 @freezed
-class EspnEvent with _$EspnEvent {
+abstract class EspnEvent with _$EspnEvent {
   const factory EspnEvent({
     required String id,
     required String date,
@@ -31,7 +31,7 @@ class EspnEvent with _$EspnEvent {
 }
 
 @freezed
-class EspnCompetition with _$EspnCompetition {
+abstract class EspnCompetition with _$EspnCompetition {
   const factory EspnCompetition({
     required String id,
     @Default([]) List<EspnCompetitor> competitors,
@@ -44,7 +44,7 @@ class EspnCompetition with _$EspnCompetition {
 }
 
 @freezed
-class EspnCompetitor with _$EspnCompetitor {
+abstract class EspnCompetitor with _$EspnCompetitor {
   const factory EspnCompetitor({
     required String id,
     required EspnTeam team,
@@ -57,7 +57,7 @@ class EspnCompetitor with _$EspnCompetitor {
 }
 
 @freezed
-class EspnStatus with _$EspnStatus {
+abstract class EspnStatus with _$EspnStatus {
   const factory EspnStatus({
     EspnStatusType? type,
     String? displayClock,
@@ -69,7 +69,7 @@ class EspnStatus with _$EspnStatus {
 }
 
 @freezed
-class EspnStatusType with _$EspnStatusType {
+abstract class EspnStatusType with _$EspnStatusType {
   const factory EspnStatusType({
     required String id,
     String? name,
@@ -81,7 +81,7 @@ class EspnStatusType with _$EspnStatusType {
 }
 
 @freezed
-class EspnTeam with _$EspnTeam {
+abstract class EspnTeam with _$EspnTeam {
   const factory EspnTeam({
     required String id,
     String? name,
@@ -96,11 +96,11 @@ class EspnTeam with _$EspnTeam {
 }
 
 @freezed
-class EspnLogo with _$EspnLogo {
+abstract class EspnLogo with _$EspnLogo {
   const factory EspnLogo({
     String? href,
     String? alt,
-    String? rel,
+    @Default([]) List<String> rel,
   }) = _EspnLogo;
 
   factory EspnLogo.fromJson(Map<String, dynamic> json) =>
@@ -108,7 +108,7 @@ class EspnLogo with _$EspnLogo {
 }
 
 @freezed
-class EspnLeague with _$EspnLeague {
+abstract class EspnLeague with _$EspnLeague {
   const factory EspnLeague({
     required String id,
     String? name,
@@ -120,7 +120,7 @@ class EspnLeague with _$EspnLeague {
 }
 
 @freezed
-class EspnSport with _$EspnSport {
+abstract class EspnSport with _$EspnSport {
   const factory EspnSport({
     required String id,
     String? name,
@@ -132,7 +132,7 @@ class EspnSport with _$EspnSport {
 }
 
 @freezed
-class EspnVenue with _$EspnVenue {
+abstract class EspnVenue with _$EspnVenue {
   const factory EspnVenue({
     required String id,
     String? fullName,
@@ -149,7 +149,7 @@ class EspnVenue with _$EspnVenue {
 }
 
 @freezed
-class EspnCompetitionType with _$EspnCompetitionType {
+abstract class EspnCompetitionType with _$EspnCompetitionType {
   const factory EspnCompetitionType({
     required String id,
     String? name,
@@ -161,7 +161,7 @@ class EspnCompetitionType with _$EspnCompetitionType {
 }
 
 @freezed
-class EspnLink with _$EspnLink {
+abstract class EspnLink with _$EspnLink {
   const factory EspnLink({
     String? href,
     String? rel,
@@ -173,7 +173,7 @@ class EspnLink with _$EspnLink {
 }
 
 @freezed
-class EspnSummaryResponse with _$EspnSummaryResponse {
+abstract class EspnSummaryResponse with _$EspnSummaryResponse {
   const factory EspnSummaryResponse({
     EspnArticle? article,
     @Default([]) List<EspnCommentaryItem> commentary,
@@ -184,7 +184,7 @@ class EspnSummaryResponse with _$EspnSummaryResponse {
 }
 
 @freezed
-class EspnArticle with _$EspnArticle {
+abstract class EspnArticle with _$EspnArticle {
   const factory EspnArticle({
     @Default([]) List<EspnCommentaryItem> commentary,
     @Default([]) List<EspnCommentaryItem> items,
@@ -195,7 +195,7 @@ class EspnArticle with _$EspnArticle {
 }
 
 @freezed
-class EspnCommentaryItem with _$EspnCommentaryItem {
+abstract class EspnCommentaryItem with _$EspnCommentaryItem {
   const factory EspnCommentaryItem({
     String? id,
     String? playId,
@@ -220,7 +220,7 @@ class EspnCommentaryItem with _$EspnCommentaryItem {
 }
 
 @freezed
-class EspnTime with _$EspnTime {
+abstract class EspnTime with _$EspnTime {
   const factory EspnTime({
     String? displayValue,
     String? value,

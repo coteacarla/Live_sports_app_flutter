@@ -27,6 +27,9 @@ class ApiConstants {
     ],
     'volleyball': [
       'https://site.api.espn.com/apis/site/v2/sports/volleyball/womens-college-volleyball/scoreboard',
+      'https://site.api.espn.com/apis/site/v2/sports/volleyball/mens-college-volleyball/scoreboard',
+      'https://site.api.espn.com/apis/site/v2/sports/volleyball/fivb-volleyball-womens/scoreboard',
+      'https://site.api.espn.com/apis/site/v2/sports/volleyball/fivb-volleyball-mens/scoreboard',
     ],
   };
 

@@ -16,22 +16,23 @@ class MatchCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 1. Extract the text theme once to keep the build method clean
     final textTheme = Theme.of(context).textTheme;
+    final mq = MediaQuery.of(context);
+    final cardPadding = (mq.size.width * 0.03).clamp(10.0, 16.0);
+    final rowGap = (mq.size.height * 0.01).clamp(6.0, 12.0);
+    final scoreGap = (mq.size.width * 0.025).clamp(8.0, 14.0);
 
     return Card(
       margin: EdgeInsets.zero,
-      // 2. Clip behavior ensures the InkWell ripple doesn't bleed outside the rounded corners
-      clipBehavior: Clip.antiAlias, 
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(cardPadding),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top Row: Teams & Trailing Widget
               Row(
                 children: [
                   Expanded(
@@ -42,18 +43,15 @@ class MatchCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  // Cleaner syntax for conditionally adding a widget
-                  if (trailing != null) trailing!, 
+                  if (trailing != null) trailing!,
                 ],
               ),
-              const SizedBox(height: 8),
-              
-              // Bottom Row: Score, Status & Time
+              SizedBox(height: rowGap),
               Row(
                 children: [
                   _buildScoreBug(context, match),
-                  const SizedBox(width: 10),
-                  Text(match.status.name.toUpperCase()),
+                  SizedBox(width: scoreGap),
+                  Text(_statusLabel(match).toUpperCase()),
                   const Spacer(),
                   Text(
                     _formatKickoff(match.scheduledAt),
@@ -70,25 +68,32 @@ class MatchCard extends StatelessWidget {
 
   /// Inline score bug widget builder
   Widget _buildScoreBug(BuildContext context, Match match) {
+    final mq = MediaQuery.of(context);
     final style = Theme.of(context).textTheme.titleMedium;
+    final horizontalPadding = (mq.size.width * 0.03).clamp(10.0, 16.0);
+    final verticalPadding = (mq.size.height * 0.008).clamp(5.0, 10.0);
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
         child: Text(match.scoreDisplay, style: style),
       ),
     );
   }
 
-  // 3. Simplified Date Formatter
   static String _formatKickoff(DateTime value) {
     final local = value.toLocal();
-    // Helper function to pad single digits with a leading zero
     String pad(int n) => n.toString().padLeft(2, '0');
-    
+
     return '${pad(local.day)}/${pad(local.month)} ${pad(local.hour)}:${pad(local.minute)}';
   }
 }
+
+  String _statusLabel(Match match) {
+    if (match.isFinished) return 'FT';
+    if (match.isLive) return 'LIVE';
+    return match.status.name;
+  }

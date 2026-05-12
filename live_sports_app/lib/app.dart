@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'features/matches/domain/entities/match.dart';
-import 'features/matches/view.dart';
-import 'features/sports/view.dart';
+import 'features/matches/domain/entities/match.dart' as ent;
+import 'features/matches/screens/live_matches_screen.dart';
+import 'features/matches/screens/match_detail_screen.dart';
+import 'features/matches/screens/results_screen.dart';
+import 'features/sports/screens/sports_screen.dart';
 
 class LiveSportsApp extends StatelessWidget {
 	const LiveSportsApp({super.key});
@@ -32,7 +34,7 @@ class _RootShell extends ConsumerStatefulWidget {
 class _RootShellState extends ConsumerState<_RootShell> {
 	int _index = 0;
 
-	void _openMatch(Match match) {
+	void _openMatch(ent.Match match) {
 		Navigator.of(context).push(
 			MaterialPageRoute<void>(
 				builder: (_) => MatchDetailScreen(matchId: match.id, match: match),

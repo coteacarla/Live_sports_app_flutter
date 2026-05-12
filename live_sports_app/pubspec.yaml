@@ -4,20 +4,18 @@ publish_to: none
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.0.0 <4.0.0"
+  sdk: ">=3.8.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
 
   # ── State management ──────────────────────────────────────────────────────
-  flutter_riverpod: ^2.5.1
-  riverpod_annotation: ^2.3.5
-  hooks_riverpod: ^2.5.1           # Optional: useRef / useState in widgets
-  flutter_hooks: ^0.20.5
-
-  # ── Functional error handling ────────────────────────────────────────────
-  dartz: ^0.10.1                   # Either<Failure, T> return types
+  flutter_riverpod: ^3.2.1
+  hooks_riverpod: ^3.2.1           # Optional: useRef / useState in widgets
+  riverpod: ^3.2.1
+  riverpod_annotation: ^4.0.2
+  flutter_hooks: ^0.21.0
 
   # ── Networking ────────────────────────────────────────────────────────────
   dio: ^5.4.3
@@ -41,17 +39,16 @@ dependencies:
   cached_network_image: ^3.3.1     # Team/league logo caching
   uuid: ^4.0.0                     # UUID generation
   timezone: ^0.9.4                 # Timezone utilities for notifications
-  freezed_annotation: ^2.4.1        # For immutable state classes  json_annotation: ^4.9.0           # For JSON serialization annotations
+  freezed_annotation: ^3.1.0        # For immutable state classes
+  json_annotation: ^4.9.0           # For JSON serialization annotations
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
   build_runner: ^2.4.9
-  riverpod_generator: ^2.4.0       # Code-gen for @riverpod annotations
-  freezed: ^2.4.5                  # Code-gen for immutable classes
+  riverpod_generator: ^4.0.3       # Code-gen for @riverpod annotations
+  freezed: ^3.2.5                  # Code-gen for immutable classes
   json_serializable: ^6.8.0        # Code-gen for JSON serialization
-  hive_generator: ^2.0.1
-  isar_generator: ^3.1.0
   mocktail: ^1.0.3                 # Mocking for unit tests
   very_good_analysis: ^5.1.0       # Strict lint rules
 

@@ -10,12 +10,12 @@ class MatchNotificationToggle extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final prefs = ref.watch(matchNotificationPreferencesProvider);
-    final isEnabled = prefs.isEnabled(matchId);
+    final enabledIds = ref.watch(matchNotificationPreferencesProvider);
+    final isEnabled = enabledIds.contains(matchId);
 
     return IconButton(
       tooltip: isEnabled ? 'Disable match notifications' : 'Enable match notifications',
-      onPressed: () => ref.read(matchNotificationPreferencesProvider).toggle(matchId),
+      onPressed: () => ref.read(matchNotificationPreferencesProvider.notifier).toggle(matchId),
       icon: Icon(
         isEnabled ? Icons.notifications_active_outlined : Icons.notifications_off_outlined,
       ),

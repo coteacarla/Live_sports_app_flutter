@@ -24,4 +24,22 @@ class SportModel extends Sport {
         iconUrl: sport.iconUrl,
         isPopular: sport.isPopular,
       );
+
+  factory SportModel.fromJson(Map<String, dynamic> json) => SportModel(
+        id: (json['idSport'] ?? json['id'] ?? '').toString(),
+        name: (json['strSport'] ?? json['name'] ?? '').toString(),
+        slug: _canonicalSlug(
+          ((json['strSport'] ?? json['name'] ?? '') as String)
+              .toLowerCase()
+              .replaceAll(RegExp(r'\s+'), '-'),
+        ),
+        iconUrl: (json['strSportThumb'] ?? json['icon_url'])?.toString(),
+        isPopular: const {'Soccer', 'Basketball', 'Tennis'}
+            .contains((json['strSport'] ?? '').toString()),
+      );
+
+  static String _canonicalSlug(String slug) {
+    if (slug == 'soccer') return 'football';
+    return slug;
+  }
 }

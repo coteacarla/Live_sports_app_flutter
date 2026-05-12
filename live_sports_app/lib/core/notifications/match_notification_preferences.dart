@@ -1,15 +1,17 @@
-import 'package:flutter/foundation.dart';
+import 'package:riverpod/riverpod.dart';
 
-class MatchNotificationPreferences extends ChangeNotifier {
-  final Set<String> _enabledMatchIds = <String>{};
+class MatchNotificationPreferences extends Notifier<Set<String>> {
+  @override
+  Set<String> build() => <String>{};
 
-  bool isEnabled(String matchId) => _enabledMatchIds.contains(matchId);
+  bool isEnabled(String matchId) => state.contains(matchId);
 
   void setEnabled(String matchId, bool enabled) {
-    final changed = enabled
-        ? _enabledMatchIds.add(matchId)
-        : _enabledMatchIds.remove(matchId);
-    if (changed) notifyListeners();
+    final updated = Set<String>.from(state);
+    final changed = enabled ? updated.add(matchId) : updated.remove(matchId);
+    if (changed) {
+      state = updated;
+    }
   }
 
   void toggle(String matchId) {

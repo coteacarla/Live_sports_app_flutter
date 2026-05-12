@@ -34,11 +34,18 @@ class LeagueFilterBar extends ConsumerWidget {
     }
 
     // 3. Selection Helper
-    void handleSelect(String? leagueId) {
+    void handleSelect(String? leagueId, [String? leagueSportId]) {
       if (onSelectLeague != null) {
         onSelectLeague!(leagueId);
       } else {
-        ref.read(selectedLeagueIdProvider.notifier).state = leagueId;
+        ref.read(selectedLeagueIdProvider.notifier).setLeagueId(leagueId);
+        // If a league was selected, also update the selected sport so
+        // Results/Upcoming use the matching sport filter instead of the
+        // previously selected sport (avoids empty lists when league sport
+        // differs).
+        if (leagueSportId != null) {
+          ref.read(selectedSportIdProvider.notifier).setSportId(leagueSportId);
+        }
       }
     }
 
@@ -71,7 +78,7 @@ class LeagueFilterBar extends ConsumerWidget {
             child: ChoiceChip(
               selected: selectedLeagueId == league.name,
               label: Text(league.name),
-              onSelected: (_) => handleSelect(league.name),
+              onSelected: (_) => handleSelect(league.name, league.sportId),
             ),
           );
         },

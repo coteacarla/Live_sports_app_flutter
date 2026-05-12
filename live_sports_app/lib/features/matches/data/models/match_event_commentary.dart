@@ -4,9 +4,10 @@ import '../../domain/entities/commentary.dart';
 import '../../domain/entities/match_event.dart';
 
 part 'match_event_commentary.freezed.dart';
+part 'match_event_commentary.g.dart';
 
 @freezed
-class MatchEventModel with _$MatchEventModel implements MatchEvent {
+abstract class MatchEventModel with _$MatchEventModel {
   const MatchEventModel._();
 
   const factory MatchEventModel({
@@ -23,6 +24,9 @@ class MatchEventModel with _$MatchEventModel implements MatchEvent {
     String? detail,
   }) = _MatchEventModel;
 
+  factory MatchEventModel.fromJson(Map<String, dynamic> json) =>
+      _$MatchEventModelFromJson(json);
+
   MatchEvent toDomain() => MatchEvent(
         id: id,
         matchId: matchId,
@@ -36,31 +40,6 @@ class MatchEventModel with _$MatchEventModel implements MatchEvent {
         extraMinute: extraMinute,
         detail: detail,
       );
-
-  @override
-  String get minuteLabel {
-    final base = "$minute'";
-    if (extraMinute != null && extraMinute! > 0) return "$minute+$extraMinute'";
-    return base;
-  }
-
-  @override
-  List<Object?> get props => [
-        id,
-        matchId,
-        type,
-        minute,
-        teamId,
-        playerId,
-        playerName,
-        assistPlayerId,
-        assistPlayerName,
-        extraMinute,
-        detail,
-      ];
-
-  @override
-  bool? get stringify => true;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -68,7 +47,7 @@ class MatchEventModel with _$MatchEventModel implements MatchEvent {
 // ─────────────────────────────────────────────────────────────────────────────
 
 @freezed
-class CommentaryModel with _$CommentaryModel implements Commentary {
+abstract class CommentaryModel with _$CommentaryModel {
   const CommentaryModel._();
 
   const factory CommentaryModel({
@@ -81,6 +60,9 @@ class CommentaryModel with _$CommentaryModel implements Commentary {
     DateTime? publishedAt,
   }) = _CommentaryModel;
 
+  factory CommentaryModel.fromJson(Map<String, dynamic> json) =>
+      _$CommentaryModelFromJson(json);
+
   Commentary toDomain() => Commentary(
         id: id,
         matchId: matchId,
@@ -90,18 +72,4 @@ class CommentaryModel with _$CommentaryModel implements Commentary {
         relatedEventId: relatedEventId,
         publishedAt: publishedAt,
       );
-
-  @override
-  List<Object?> get props => [
-        id,
-        matchId,
-        minute,
-        text,
-        isKeyEvent,
-        relatedEventId,
-        publishedAt,
-      ];
-
-  @override
-  bool? get stringify => true;
 }

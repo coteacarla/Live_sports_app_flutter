@@ -12,18 +12,8 @@ import 'providers.dart';
 import 'state.dart';
 
 // ─────────────────────────────────────────────────────────────────────────
-// LIVE MATCHES SCREEN & VIEW
+// LIVE MATCHES VIEW (screen moved to screens/)
 // ─────────────────────────────────────────────────────────────────────────
-
-/// Main entry point for Live Matches, used in navigation.
-class LiveMatchesScreen extends StatelessWidget {
-  const LiveMatchesScreen({required this.onOpenMatch, super.key});
-
-  final ValueChanged<Match> onOpenMatch;
-
-  @override
-  Widget build(BuildContext context) => LiveMatchesView(onOpenMatch: onOpenMatch);
-}
 
 /// Displays current live matches with filtering by league and sport.
 class LiveMatchesView extends ConsumerWidget {
@@ -35,78 +25,80 @@ class LiveMatchesView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(liveMatchesProvider);
     final notifier = ref.read(liveMatchesProvider.notifier);
+    final mq = MediaQuery.of(context);
+    final spacing = (mq.size.height * 0.02).clamp(8.0, 28.0);
+    final spacingSmall = (spacing * 0.6).clamp(6.0, 16.0);
 
     return SafeArea(
       child: RefreshIndicator(
         onRefresh: () => notifier.refresh(),
-        child: _buildBody(context, state, ref),
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: EdgeInsets.all(spacingSmall),
+              sliver: SliverToBoxAdapter(
+                child: LeagueFilterBar(
+                  onSelectLeague: (id) {
+                    ref.read(selectedLeagueIdProvider.notifier).setLeagueId(id);
+                  },
+                ),
+              ),
+            ),
+
+            if (state.isLoading && state.matches.isEmpty)
+              SliverFillRemaining(
+                child: AsyncStateView.loading(message: 'Fetching live matches...'),
+              )
+            else if (state.matches.isEmpty && state.errorMessage != null)
+              SliverFillRemaining(
+                child: AsyncStateView.error(
+                  title: 'Could not load live matches',
+                  message: state.errorMessage!,
+                  onRetry: () => notifier.refresh(),
+                ),
+              )
+            else if (state.matches.isEmpty)
+              SliverFillRemaining(
+                child: AsyncStateView.empty(
+                  title: 'No matches scheduled for today',
+                  message: 'Try another league, refresh, or switch sport from Sports.',
+                ),
+              )
+            else ...[
+              if (state.errorMessage != null)
+                SliverToBoxAdapter(child: _buildInlineError(context, state.errorMessage!)),
+              SliverPadding(
+                padding: EdgeInsets.symmetric(horizontal: spacingSmall),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final match = state.matches[index];
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: spacingSmall),
+                        child: MatchCard(
+                          match: match,
+                          onTap: () => onOpenMatch(match),
+                          trailing: MatchNotificationToggle(matchId: match.id),
+                        ),
+                      );
+                    },
+                    childCount: state.matches.length,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
-    );
-  }
-
-  Widget _buildBody(
-    BuildContext context,
-    LiveMatchesState state,
-    WidgetRef ref,
-  ) {
-    final notifier = ref.read(liveMatchesProvider.notifier);
-    final children = <Widget>[
-      GestureDetector(
-        onTap: () {}, // Placeholder for league filter bar interaction
-        child: LeagueFilterBar(
-          onSelectLeague: (id) {
-            // Update the state provider, which will trigger the listener to sync with notifier
-            ref.read(selectedLeagueIdProvider.notifier).state = id;
-          },
-        ),
-      ),
-      const SizedBox(height: 12),
-    ];
-
-    if (state.isLoading && state.matches.isEmpty) {
-      children.add(
-        const Padding(
-          padding: EdgeInsets.only(top: 100),
-          child: AsyncStateView.loading(message: 'Fetching live matches...'),
-        ),
-      );
-    } else if (state.matches.isEmpty && state.errorMessage != null) {
-      children.add(
-        Padding(
-          padding: const EdgeInsets.only(top: 100),
-          child: AsyncStateView.error(
-            title: 'Could not load live matches',
-            message: state.errorMessage!,
-            onRetry: () => notifier.refresh(),
-          ),
-        ),
-      );
-    } else if (state.matches.isEmpty) {
-      children.add(
-        const Padding(
-          padding: EdgeInsets.only(top: 96),
-          child: AsyncStateView.empty(
-            title: 'No live matches right now',
-            message: 'Try another league, refresh, or switch sport from Sports.',
-          ),
-        ),
-      );
-    } else {
-      if (state.errorMessage != null) {
-        children.add(_buildInlineError(context, state.errorMessage!));
-      }
-      children.addAll(_buildMatchCards(state.matches));
-    }
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: children,
     );
   }
 
   Widget _buildInlineError(BuildContext context, String message) {
+    final mq = MediaQuery.of(context);
+    final spacingSmall = (mq.size.height * 0.02 * 0.6).clamp(6.0, 16.0);
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: spacingSmall),
       child: Text(
         message,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -116,33 +108,11 @@ class LiveMatchesView extends ConsumerWidget {
     );
   }
 
-  List<Widget> _buildMatchCards(List<Match> matches) {
-    return matches.map((match) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: MatchCard(
-          match: match,
-          onTap: () => onOpenMatch(match),
-          trailing: MatchNotificationToggle(matchId: match.id),
-        ),
-      );
-    }).toList(growable: false);
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────
 // RESULTS SCREEN & VIEW (Scheduled + Past Matches)
 // ─────────────────────────────────────────────────────────────────────────
-
-/// Entry point for Results view in navigation.
-class ResultsScreen extends StatelessWidget {
-  const ResultsScreen({required this.onOpenMatch, super.key});
-
-  final ValueChanged<Match> onOpenMatch;
-
-  @override
-  Widget build(BuildContext context) => ResultsView(onOpenMatch: onOpenMatch);
-}
 
 /// Shows upcoming fixtures and recent match results.
 class ResultsView extends ConsumerWidget {
@@ -158,144 +128,80 @@ class ResultsView extends ConsumerWidget {
     return SafeArea(
       child: RefreshIndicator(
         onRefresh: () => notifier.refresh(),
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            LeagueFilterBar(
-              onSelectLeague: (id) {
-                notifier.selectLeague(id);
-              },
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.all(16),
+              sliver: SliverToBoxAdapter(
+                child: LeagueFilterBar(
+                  onSelectLeague: (id) {
+                    ref.read(selectedLeagueIdProvider.notifier).setLeagueId(id);
+                  },
+                ),
+              ),
             ),
-            const SizedBox(height: 16),
-            ..._buildSection(
-              context,
-              title: 'Upcoming',
-              matches: state.scheduledMatches,
-              isLoading: state.isLoading,
-              errorMessage: state.scheduledErrorMessage,
-              onOpenMatch: onOpenMatch,
-              onRetry: () => notifier.refresh(),
-              emptyMessage: 'No upcoming fixtures found.',
+
+            // Upcoming section
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverToBoxAdapter(
+                child: Text('Upcoming', style: Theme.of(context).textTheme.titleLarge),
+              ),
             ),
-            const SizedBox(height: 20),
-            ..._buildSection(
-              context,
-              title: 'Recent Results',
-              matches: state.pastMatches,
-              isLoading: state.isLoading,
-              errorMessage: state.pastErrorMessage,
-              onOpenMatch: onOpenMatch,
-              onRetry: () => notifier.refresh(),
-              emptyMessage: 'No recent results available.',
+            if (state.isLoading && state.scheduledMatches.isEmpty)
+              const SliverToBoxAdapter(child: AsyncStateView.loading(message: 'Loading upcoming...'))
+            else if (state.scheduledMatches.isEmpty && state.scheduledErrorMessage != null)
+              SliverToBoxAdapter(child: AsyncStateView.error(title: 'Failed to load upcoming', message: state.scheduledErrorMessage!, onRetry: () => notifier.refresh()))
+            else
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final match = state.scheduledMatches[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: MatchCard(match: match, onTap: () => onOpenMatch(match), trailing: MatchNotificationToggle(matchId: match.id)),
+                      );
+                    },
+                    childCount: state.scheduledMatches.length,
+                  ),
+                ),
+              ),
+
+            // Recent results section
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: Text('Recent Results', style: Theme.of(context).textTheme.titleLarge),
+              ),
             ),
+            if (state.isLoading && state.pastMatches.isEmpty)
+              const SliverToBoxAdapter(child: AsyncStateView.loading(message: 'Loading results...'))
+            else if (state.pastMatches.isEmpty && state.pastErrorMessage != null)
+              SliverToBoxAdapter(child: AsyncStateView.error(title: 'Failed to load results', message: state.pastErrorMessage!, onRetry: () => notifier.refresh()))
+            else
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final match = state.pastMatches[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: MatchCard(match: match, onTap: () => onOpenMatch(match), trailing: MatchNotificationToggle(matchId: match.id)),
+                      );
+                    },
+                    childCount: state.pastMatches.length,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
     );
   }
 
-  List<Widget> _buildSection(
-    BuildContext context, {
-    required String title,
-    required List<Match> matches,
-    required bool isLoading,
-    required String? errorMessage,
-    required ValueChanged<Match> onOpenMatch,
-    required VoidCallback onRetry,
-    required String emptyMessage,
-  }) {
-    return [
-      Text(title, style: Theme.of(context).textTheme.titleLarge),
-      const SizedBox(height: 8),
-      _SectionMatches(
-        matches: matches,
-        isLoading: isLoading,
-        errorMessage: errorMessage,
-        onOpenMatch: onOpenMatch,
-        onRetry: onRetry,
-        emptyMessage: emptyMessage,
-      ),
-    ];
-  }
-}
-
-class _SectionMatches extends StatelessWidget {
-  const _SectionMatches({
-    required this.matches,
-    required this.isLoading,
-    required this.errorMessage,
-    required this.onOpenMatch,
-    required this.onRetry,
-    required this.emptyMessage,
-  });
-
-  final List<Match> matches;
-  final bool isLoading;
-  final String? errorMessage;
-  final ValueChanged<Match> onOpenMatch;
-  final VoidCallback onRetry;
-  final String emptyMessage;
-
-  @override
-  Widget build(BuildContext context) {
-    if (isLoading && matches.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 10),
-        child: AsyncStateView.loading(message: 'Loading timeline...'),
-      );
-    }
-
-    if (errorMessage != null && matches.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: AsyncStateView.error(
-          title: 'Failed to load this section',
-          message: errorMessage!,
-          onRetry: onRetry,
-        ),
-      );
-    }
-
-    if (matches.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: AsyncStateView.empty(
-          title: emptyMessage,
-          message: 'Try another sport or refresh the timeline.',
-        ),
-      );
-    }
-
-    return Column(
-      children: matches.take(8).map((match) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: MatchCard(
-            match: match,
-            onTap: () => onOpenMatch(match),
-            trailing: MatchNotificationToggle(matchId: match.id),
-          ),
-        );
-      }).toList(growable: false),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// MATCH DETAIL SCREEN & VIEW
-// ─────────────────────────────────────────────────────────────────────────
-
-/// Entry point for Match Detail view in navigation.
-class MatchDetailScreen extends StatelessWidget {
-  const MatchDetailScreen({required this.matchId, this.match, super.key});
-
-  final String matchId;
-  final Match? match;
-
-  @override
-  Widget build(BuildContext context) {
-    return MatchDetailView(matchId: matchId, initialMatch: match);
-  }
 }
 
 /// Full-screen match detail with score, events, and live commentary.
@@ -312,6 +218,7 @@ class MatchDetailView extends ConsumerWidget {
         MatchDetailArgs(matchId: matchId, initialMatch: initialMatch),
       ),
     );
+    final commentary = ref.watch(matchCommentaryProvider(matchId));
     final notifier = ref.read(
       matchDetailProvider(
         MatchDetailArgs(matchId: matchId, initialMatch: initialMatch),
@@ -328,13 +235,14 @@ class MatchDetailView extends ConsumerWidget {
           ),
         ],
       ),
-      body: _buildBody(context, state, ref),
+      body: _buildBody(context, state, commentary, ref),
     );
   }
 
   Widget _buildBody(
     BuildContext context,
     MatchDetailState state,
+    AsyncValue<List<Commentary>> commentary,
     WidgetRef ref,
   ) {
     final notifier = ref.read(
@@ -342,7 +250,9 @@ class MatchDetailView extends ConsumerWidget {
         MatchDetailArgs(matchId: matchId, initialMatch: initialMatch),
       ).notifier,
     );
-    if (state.isLoading && state.events.isEmpty && state.commentary.isEmpty) {
+    final commentaryItems = commentary.value ?? const <Commentary>[];
+
+    if (commentary.isLoading && state.events.isEmpty && commentaryItems.isEmpty) {
       return const Center(
         child: AsyncStateView.loading(message: 'Loading match detail...'),
       );
@@ -358,21 +268,23 @@ class MatchDetailView extends ConsumerWidget {
       );
     }
 
+    final spacing = (MediaQuery.of(context).size.height * 0.02).clamp(8.0, 28.0);
+
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(spacing),
       children: [
         _MatchHeader(match: state.match),
-        const SizedBox(height: 16),
+        SizedBox(height: spacing),
         _SectionTitle(title: 'Events'),
-        const SizedBox(height: 8),
+        SizedBox(height: spacing * 0.5),
         if (state.events.isEmpty)
           const Text('No events yet.')
         else
           ...state.events.map((event) => _MatchEventTile(event: event)),
-        const SizedBox(height: 16),
+        SizedBox(height: spacing),
         _SectionTitle(title: 'Commentary'),
-        const SizedBox(height: 8),
-        _CommentaryFeed(items: state.commentary),
+        SizedBox(height: spacing * 0.5),
+        _CommentaryFeed(items: commentaryItems),
       ],
     );
   }
@@ -392,7 +304,7 @@ class _MatchHeader extends StatelessWidget {
           '${match.homeTeam.name} vs ${match.awayTeam.name}',
           style: Theme.of(context).textTheme.headlineSmall,
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: (MediaQuery.of(context).size.height * 0.01).clamp(6.0, 16.0)),
         Row(
           children: [
             _ScoreBug(match: match),
@@ -428,14 +340,17 @@ class _ScoreBug extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
     final style = Theme.of(context).textTheme.titleMedium;
+    final horiz = (mq.size.width * 0.02).clamp(8.0, 16.0);
+    final vert = (mq.size.height * 0.005).clamp(4.0, 10.0);
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: EdgeInsets.symmetric(horizontal: horiz, vertical: vert),
         child: Text(match.scoreDisplay, style: style),
       ),
     );
@@ -450,10 +365,12 @@ class _MatchEventTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final radius = (mq.size.width * 0.035).clamp(12.0, 20.0);
     return ListTile(
       dense: true,
       leading: CircleAvatar(
-        radius: 14,
+        radius: radius,
         child: Text(event.minute.toString()),
       ),
       title: Text(event.playerName ?? 'Match Event'),
@@ -475,6 +392,9 @@ class _CommentaryFeed extends StatelessWidget {
       return const Center(child: Text('No commentary available yet.'));
     }
 
+    final mq = MediaQuery.of(context);
+    final iconSize = (mq.size.width * 0.035).clamp(12.0, 20.0);
+
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -485,7 +405,7 @@ class _CommentaryFeed extends StatelessWidget {
           leading: Text("${item.minute}'"),
           title: Text(item.text),
           trailing: item.isKeyEvent
-              ? const Icon(Icons.bolt, size: 16)
+              ? Icon(Icons.bolt, size: iconSize)
               : const SizedBox.shrink(),
         );
       },

@@ -1,11 +1,10 @@
 import 'dart:async';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:dartz/dartz.dart';
+import 'package:riverpod/riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../core/constants/polling_config.dart';
 import '../../core/error/failures.dart';
-import '../../core/notifications/local_notification_service.dart';
-import '../../core/notifications/match_notification_preferences.dart';
+import '../../core/result.dart';
 import '../../injection/providers.dart';
 import 'data/datasources/matches_remote_datasource.dart';
 import 'data/repositories/matches_repository_impl.dart';
@@ -15,11 +14,10 @@ import 'domain/usecases/get_past_matches.dart';
 import 'domain/usecases/get_scheduled_matches.dart';
 import 'domain/usecases/get_match_commentary.dart';
 import 'domain/entities/match.dart';
+import 'domain/entities/commentary.dart';
 import 'state.dart';
 
-// ─────────────────────────────────────────────────────────────────────────
-// DATA LAYER PROVIDERS
-// ─────────────────────────────────────────────────────────────────────────
+part 'providers.g.dart';
 
 final matchesRemoteDataSourceProvider = Provider<MatchesRemoteDataSource>(
   (ref) => MatchesRemoteDataSourceImpl(dioClient: ref.watch(dioClientProvider)),
@@ -31,10 +29,6 @@ final matchesRepositoryProvider = Provider<MatchesRepository>(
     networkInfo: ref.watch(networkInfoProvider),
   ),
 );
-
-// ─────────────────────────────────────────────────────────────────────────
-// DOMAIN LAYER PROVIDERS (UseCases)
-// ─────────────────────────────────────────────────────────────────────────
 
 final getLiveMatchesUseCaseProvider = Provider<GetLiveMatches>(
   (ref) => GetLiveMatches(ref.watch(matchesRepositoryProvider)),
@@ -52,225 +46,282 @@ final getMatchCommentaryUseCaseProvider = Provider<GetMatchCommentary>(
   (ref) => GetMatchCommentary(ref.watch(matchesRepositoryProvider)),
 );
 
-// ─────────────────────────────────────────────────────────────────────────
-// FILTER PROVIDERS (Global state for sport/league selection)
-// ─────────────────────────────────────────────────────────────────────────
+@riverpod
+class MatchCommentary extends _$MatchCommentary {
+  late final String _matchId;
 
-final selectedSportIdProvider = StateProvider<String>((ref) => 'football');
-
-final selectedLeagueIdProvider = StateProvider<String?>((ref) => null);
-
-// ─────────────────────────────────────────────────────────────────────────
-// LIVE MATCHES STATE NOTIFIER & PROVIDER
-// ─────────────────────────────────────────────────────────────────────────
-
-class _LiveMatchesNotifier extends StateNotifier<LiveMatchesState> {
-  _LiveMatchesNotifier({
-    required this.getLiveMatches,
-    required this.notificationService,
-    required this.notificationPreferences,
-    String? initialSportId,
-    String? initialLeagueId,
-  })  : _sportId = _canonicalSportId(initialSportId ?? 'football'),
-        _leagueId = initialLeagueId,
-        super(const LiveMatchesState()) {
-    _pollingTimer = Timer.periodic(PollingConfig.liveMatches, (_) {
-      if (!_isDisposed) {
-        _fetchMatches(silent: true);
-      }
-    });
-    _fetchMatches(silent: false);
+  @override
+  Future<List<Commentary>> build(String matchId) async {
+    _matchId = matchId;
+    return _loadInitialCommentary();
   }
 
-  final GetLiveMatches getLiveMatches;
-  final LocalNotificationService notificationService;
-  final MatchNotificationPreferences notificationPreferences;
+  Future<void> poll() async {
+    if (!ref.mounted) return;
+    final current = state.value ?? const <Commentary>[];
+    final since = _pollSince(current);
+    final fresh = await _fetchCommentary(since: since);
+    if (!ref.mounted) return;
+    if (fresh.isNotEmpty) {
+      _applyUpdates(current, fresh);
+      return;
+    }
 
-  late Timer _pollingTimer;
+    final fallback = await _fetchFallbackCommentary();
+    if (!ref.mounted) return;
+    if (fallback.isNotEmpty) {
+      _applyUpdates(current, fallback);
+    }
+  }
+
+  Future<List<Commentary>> _loadInitialCommentary() async {
+    final commentary = await _fetchCommentary();
+    if (!ref.mounted) return const [];
+    if (commentary.isNotEmpty) {
+      return commentary;
+    }
+
+    return _fetchFallbackCommentary();
+  }
+
+  Future<List<Commentary>> _fetchCommentary({int? since}) async {
+    if (!ref.mounted) return const [];
+    final useCase = ref.read(getMatchCommentaryUseCaseProvider);
+    final result = await useCase(_matchId, since: since);
+    return result.fold(
+      (items) => items,
+      (_) => const <Commentary>[],
+    );
+  }
+
+  Future<List<Commentary>> _fetchFallbackCommentary() async {
+    if (!ref.mounted) return const [];
+    final repository = ref.read(matchesRepositoryProvider);
+    final result = await repository.getMatchById(_matchId);
+    return result.fold(
+      (match) => <Commentary>[_buildFallbackCommentary(match)],
+      (_) => const <Commentary>[],
+    );
+  }
+
+  Commentary _buildFallbackCommentary(Match match) {
+    final minute = match.elapsed ?? 0;
+    final statusText = switch (match.status) {
+      MatchStatus.live => 'Live update',
+      MatchStatus.paused => 'Match paused',
+      MatchStatus.finished => 'Full time',
+      MatchStatus.scheduled || MatchStatus.prematch => 'Scheduled',
+      MatchStatus.postponed => 'Postponed',
+      MatchStatus.cancelled => 'Cancelled',
+      MatchStatus.unknown => 'Status update',
+    };
+
+    final score =
+        '${match.homeTeam.name} ${match.homeScore ?? 0} - ${match.awayScore ?? 0} ${match.awayTeam.name}';
+    final timeNote = match.isScheduled
+        ? 'Kickoff at ${match.scheduledAt.toLocal().toIso8601String().substring(0, 16).replaceFirst('T', ' ')}'
+        : "At $minute'";
+
+    return Commentary(
+      id: 'fallback_${match.id}_${match.status.name}_${match.elapsed ?? 0}_${match.homeScore ?? 0}_${match.awayScore ?? 0}',
+      matchId: match.id,
+      minute: minute,
+      text: '$statusText. $score. $timeNote.',
+      isKeyEvent: true,
+      publishedAt: DateTime.now().toUtc(),
+    );
+  }
+
+  void _applyUpdates(List<Commentary> current, List<Commentary> incoming) {
+    final knownIds = current.map((item) => item.id).toSet();
+    final merged = <Commentary>[...current];
+    for (final item in incoming) {
+      if (knownIds.add(item.id)) {
+        merged.add(item);
+      }
+    }
+
+    if (merged.length != current.length) {
+      state = AsyncData(merged);
+    }
+  }
+
+  int? _pollSince(List<Commentary> items) {
+    final liveItems = items
+        .where((item) => !item.id.startsWith('fallback_'))
+        .toList(growable: false);
+    if (liveItems.isEmpty) return null;
+
+    var latest = liveItems.first.minute;
+    for (final item in liveItems.skip(1)) {
+      if (item.minute > latest) {
+        latest = item.minute;
+      }
+    }
+    return latest;
+  }
+}
+
+@Riverpod(keepAlive: true)
+class SelectedSportId extends _$SelectedSportId {
+  @override
+  String build() => 'football';
+
+  void setSportId(String sportId) {
+    state = _canonicalSportId(sportId);
+  }
+}
+
+@Riverpod(keepAlive: true)
+class SelectedLeagueId extends _$SelectedLeagueId {
+  @override
+  String? build() => null;
+
+  void setLeagueId(String? leagueId) {
+    state = leagueId;
+  }
+}
+
+@riverpod
+class LiveMatches extends _$LiveMatches {
+  Timer? _pollingTimer;
   bool _isFetching = false;
-  bool _isDisposed = false;
-  String _sportId;
+  int _buildVersion = 0;
+  String _sportId = 'football';
   String? _leagueId;
 
-  String get selectedSportId => _sportId;
-  String? get selectedLeagueId => _leagueId;
+  @override
+  LiveMatchesState build() {
+    _buildVersion++;
+    final buildVersion = _buildVersion;
+    _sportId = _canonicalSportId(ref.watch(selectedSportIdProvider));
+    _leagueId = ref.watch(selectedLeagueIdProvider);
 
-  Future<void> refresh() => _fetchMatches(silent: false);
+    _pollingTimer?.cancel();
+    _isFetching = false;
 
-  void selectSport(String sportId) {
-    final canonical = _canonicalSportId(sportId);
-    if (canonical == _sportId) return;
-    _sportId = canonical;
-    state = state.copyWith(isLoading: true, errorMessage: null);
-    _fetchMatches(silent: false);
+    Future.microtask(() {
+      ref.onDispose(() {
+        _pollingTimer?.cancel();
+      });
+
+      _pollingTimer = Timer.periodic(PollingConfig.liveMatches, (_) {
+        unawaited(_fetchMatches(silent: true, buildVersion: buildVersion));
+      });
+
+      unawaited(_fetchMatches(silent: false, buildVersion: buildVersion));
+    });
+
+    return const LiveMatchesState();
   }
 
-  void selectLeague(String? leagueId) {
-    if (leagueId == _leagueId) return;
-    _leagueId = leagueId;
-    state = state.copyWith(isLoading: true, errorMessage: null);
-    _fetchMatches(silent: false);
-  }
+  Future<void> refresh() => _fetchMatches(silent: false, buildVersion: _buildVersion);
 
-  Future<void> _fetchMatches({required bool silent}) async {
-    if (_isFetching || _isDisposed) return;
+  Future<void> _fetchMatches({
+    required bool silent,
+    required int buildVersion,
+  }) async {
+    if (_isFetching || buildVersion != _buildVersion) return;
     _isFetching = true;
+
+    final sportId = _canonicalSportId(ref.read(selectedSportIdProvider));
+    final leagueId = ref.read(selectedLeagueIdProvider);
+    _sportId = sportId;
+    _leagueId = leagueId;
 
     if (!silent && state.matches.isEmpty) {
       state = state.copyWith(isLoading: true, errorMessage: null);
     }
 
-    final result = await getLiveMatches(leagueId: _leagueId, sportId: _sportId);
+    try {
+      final result = await ref.read(getLiveMatchesUseCaseProvider)(
+        leagueId: leagueId,
+        sportId: sportId,
+      );
 
-    // Guard: don't update state if disposed
-    if (_isDisposed) {
-      _isFetching = false;
-      return;
-    }
+      if (buildVersion != _buildVersion) {
+        return;
+      }
 
-    result.fold(
-      (failure) {
-        if (state.matches.isEmpty) {
-          state = state.copyWith(isLoading: false, errorMessage: failure.message);
-        } else {
-          state = state.copyWith(isLoading: false);
-        }
-      },
-      (matches) {
-        final filtered = _filterMatches(matches);
+      result.fold(
+        (matches) {
+          final filtered = _filterMatches(matches);
 
-        // Notify about newly started matches
-        final previousIds = state.matches.map((m) => m.id).toSet();
-        final newlyLive = filtered.where(
-          (m) => m.isLive &&
-              !previousIds.contains(m.id) &&
-              notificationPreferences.isEnabled(m.id),
-        );
-        for (final m in newlyLive) {
-          unawaited(
-            notificationService.showInstantNotification(
-              title: 'Live now: ${m.homeTeam.name} vs ${m.awayTeam.name}',
-              body:
-                  '${m.homeTeam.name} ${m.homeScore ?? 0} - ${m.awayScore ?? 0} ${m.awayTeam.name}',
-            ),
+          final previousIds = state.matches.map((m) => m.id).toSet();
+          final newlyLive = filtered.where(
+            (m) => m.isLive &&
+                !previousIds.contains(m.id) &&
+                ref.read(matchNotificationPreferencesProvider.notifier).isEnabled(m.id),
           );
-        }
+          for (final m in newlyLive) {
+            unawaited(
+              ref.read(localNotificationServiceProvider).showInstantNotification(
+                title: 'Live now: ${m.homeTeam.name} vs ${m.awayTeam.name}',
+                body:
+                    '${m.homeTeam.name} ${m.homeScore ?? 0} - ${m.awayScore ?? 0} ${m.awayTeam.name}',
+              ),
+            );
+          }
 
-        state = state.copyWith(
-          matches: filtered,
-          isLoading: false,
-          errorMessage: null,
-          lastUpdated: DateTime.now().toUtc(),
-        );
-      },
-    );
-
-    _isFetching = false;
+          state = state.copyWith(
+            matches: filtered,
+            isLoading: false,
+            errorMessage: null,
+            lastUpdated: DateTime.now().toUtc(),
+          );
+        },
+        (failure) {
+          if (state.matches.isEmpty) {
+            state = state.copyWith(isLoading: false, errorMessage: failure.message);
+          } else {
+            state = state.copyWith(isLoading: false);
+          }
+        },
+      );
+    } finally {
+      // Ensure fetching flag and loading state are cleared even on unexpected errors
+      if (state.isLoading) {
+        state = state.copyWith(isLoading: false);
+      }
+      _isFetching = false;
+      print('LiveMatches isLoading: ${state.isLoading}');
+    }
   }
 
   List<Match> _filterMatches(List<Match> matches) {
     return matches
-        .where((m) => m.sportId.toLowerCase() == _sportId.toLowerCase())
+        .where((m) =>
+            m.sportId.toLowerCase() == _sportId.toLowerCase() && m.isLive)
         .toList(growable: false);
-  }
-
-  @override
-  void dispose() {
-    _isDisposed = true;
-    _pollingTimer.cancel();
-    super.dispose();
   }
 }
 
-final liveMatchesProvider =
-    StateNotifierProvider.autoDispose<_LiveMatchesNotifier, LiveMatchesState>((ref) {
-  final getLiveMatches = ref.watch(getLiveMatchesUseCaseProvider);
-  final notificationService = ref.watch(localNotificationServiceProvider);
-  final notificationPreferences = ref.watch(matchNotificationPreferencesProvider);
-  final sportId = ref.watch(selectedSportIdProvider);
-  final leagueId = ref.watch(selectedLeagueIdProvider);
-
-  final notifier = _LiveMatchesNotifier(
-    getLiveMatches: getLiveMatches,
-    notificationService: notificationService,
-    notificationPreferences: notificationPreferences,
-    initialSportId: sportId,
-    initialLeagueId: leagueId,
-  );
-
-  // Sync sport selection
-  ref.listen<String>(selectedSportIdProvider, (prev, next) {
-    // Guard: only sync if actually changed and notifier isn't already at this state
-    if (prev != null && prev != next && next != notifier.selectedSportId) {
-      notifier.selectSport(next);
-    }
-  });
-
-  // Sync league selection
-  ref.listen<String?>(selectedLeagueIdProvider, (prev, next) {
-    // Guard: only sync if actually changed and notifier isn't already at this state
-    if (prev != next && next != notifier.selectedLeagueId) {
-      notifier.selectLeague(next);
-    }
-  });
-
-  return notifier;
-});
-
-// ─────────────────────────────────────────────────────────────────────────
-// RESULTS STATE NOTIFIER & PROVIDER
-// ─────────────────────────────────────────────────────────────────────────
-
-class _ResultsNotifier extends StateNotifier<ResultsState> {
-  _ResultsNotifier({
-    required this.getPastMatches,
-    required this.getScheduledMatches,
-    String? initialSportId,
-    String? initialLeagueId,
-  })  : _sportId = _canonicalSportId(initialSportId ?? 'football'),
-        _leagueId = initialLeagueId,
-        super(const ResultsState()) {
-    _fetchResults(silent: false);
-  }
-
-  final GetPastMatches getPastMatches;
-  final GetScheduledMatches getScheduledMatches;
-
+@riverpod
+class Results extends _$Results {
   bool _isFetching = false;
-  bool _isDisposed = false;
-  String _sportId;
+  int _buildVersion = 0;
+  String _sportId = 'football';
   String? _leagueId;
 
-  String get selectedSportId => _sportId;
-  String? get selectedLeagueId => _leagueId;
+  @override
+  ResultsState build() {
+    _buildVersion++;
+    final buildVersion = _buildVersion;
+    _sportId = _canonicalSportId(ref.watch(selectedSportIdProvider));
+    _leagueId = ref.watch(selectedLeagueIdProvider);
 
-  Future<void> refresh() => _fetchResults(silent: false);
-
-  void selectSport(String sportId) {
-    final canonical = _canonicalSportId(sportId);
-    if (canonical == _sportId) return;
-    _sportId = canonical;
-    state = state.copyWith(
-      isLoading: true,
-      scheduledErrorMessage: null,
-      pastErrorMessage: null,
-    );
-    _fetchResults(silent: false);
+    _isFetching = false;
+    Future.microtask(() => unawaited(_fetchResults(silent: false, buildVersion: buildVersion)));
+    return const ResultsState();
   }
 
-  void selectLeague(String? leagueId) {
-    if (leagueId == _leagueId) return;
-    _leagueId = leagueId;
-    state = state.copyWith(
-      isLoading: true,
-      scheduledErrorMessage: null,
-      pastErrorMessage: null,
-    );
-    _fetchResults(silent: false);
-  }
+  Future<void> refresh() => _fetchResults(silent: false, buildVersion: _buildVersion);
 
-  Future<void> _fetchResults({required bool silent}) async {
-    if (_isFetching || _isDisposed) return;
+  Future<void> _fetchResults({
+    required bool silent,
+    required int buildVersion,
+  }) async {
+    if (_isFetching || buildVersion != _buildVersion) return;
     _isFetching = true;
 
     if (!silent && state.scheduledMatches.isEmpty && state.pastMatches.isEmpty) {
@@ -281,197 +332,129 @@ class _ResultsNotifier extends StateNotifier<ResultsState> {
       );
     }
 
-    final scheduledResult = await _loadSection(
-      fetch: (sportId, leagueId) => getScheduledMatches(
-        pagination: const PaginationParams(page: 1, perPage: 30),
-        filters: MatchFilters(sportId: sportId, leagueId: leagueId),
-      ),
-    );
+    final getScheduledMatches = ref.read(getScheduledMatchesUseCaseProvider);
+    final getPastMatches = ref.read(getPastMatchesUseCaseProvider);
 
-    final pastResult = await _loadSection(
-      fetch: (sportId, leagueId) => getPastMatches(
-        pagination: const PaginationParams(page: 1, perPage: 30),
-        filters: MatchFilters(sportId: sportId, leagueId: leagueId),
-      ),
-    );
+    try {
+      final scheduledResult = await _loadSection(
+        fetch: (sportId, leagueId) => getScheduledMatches(
+          pagination: const PaginationParams(page: 1, perPage: 30),
+          filters: MatchFilters(sportId: sportId, leagueId: leagueId),
+        ),
+      );
 
-    // Guard: don't update state if disposed
-    if (_isDisposed) {
+      final pastResult = await _loadSection(
+        fetch: (sportId, leagueId) => getPastMatches(
+          pagination: const PaginationParams(page: 1, perPage: 30),
+          filters: MatchFilters(sportId: sportId, leagueId: leagueId),
+        ),
+      );
+
+      if (buildVersion != _buildVersion) {
+        return;
+      }
+
+      state = state.copyWith(
+        scheduledMatches: scheduledResult.matches,
+        pastMatches: pastResult.matches,
+        scheduledErrorMessage: scheduledResult.errorMessage,
+        pastErrorMessage: pastResult.errorMessage,
+        isLoading: false,
+        lastUpdated: DateTime.now().toUtc(),
+      );
+    } finally {
+      if (state.isLoading) {
+        state = state.copyWith(isLoading: false);
+      }
       _isFetching = false;
-      return;
+      print('Results isLoading: ${state.isLoading}');
     }
-
-    state = state.copyWith(
-      scheduledMatches: scheduledResult.matches,
-      pastMatches: pastResult.matches,
-      scheduledErrorMessage: scheduledResult.errorMessage,
-      pastErrorMessage: pastResult.errorMessage,
-      isLoading: false,
-      lastUpdated: DateTime.now().toUtc(),
-    );
-
-    _isFetching = false;
   }
 
-  Future<({List<Match> matches, String? errorMessage})> _loadSection({
-    required Future<Either<Failure, List<Match>>> Function(String, String?) fetch,
+  Future<({String? errorMessage, List<Match> matches})> _loadSection({
+    required Future<Result<List<Match>, Failure>> Function(String, String?) fetch,
   }) async {
     final primaryResult = await fetch(_sportId, _leagueId);
 
-    final primaryMatches = primaryResult.fold((_) => const <Match>[], (m) => m);
+    final primaryMatches = primaryResult.fold(
+      (matches) => matches,
+      (_) => const <Match>[],
+    );
 
     if (primaryMatches.isNotEmpty) {
-      return (matches: primaryMatches, errorMessage: null);
+      return (errorMessage: null, matches: primaryMatches);
     }
 
     final fallbackResult = await fetch(_sportId, null);
     return fallbackResult.fold(
-      (failure) => (matches: const <Match>[], errorMessage: failure.message),
-      (matches) => (matches: matches, errorMessage: null),
+      (matches) => (errorMessage: null, matches: matches),
+      (failure) => (errorMessage: failure.message, matches: const <Match>[]),
     );
-  }
-
-  @override
-  void dispose() {
-    _isDisposed = true;
-    super.dispose();
   }
 }
 
-final resultsProvider =
-    StateNotifierProvider.autoDispose<_ResultsNotifier, ResultsState>((ref) {
-  final getPastMatches = ref.watch(getPastMatchesUseCaseProvider);
-  final getScheduledMatches = ref.watch(getScheduledMatchesUseCaseProvider);
-  final sportId = ref.watch(selectedSportIdProvider);
-  final leagueId = ref.watch(selectedLeagueIdProvider);
-
-  final notifier = _ResultsNotifier(
-    getPastMatches: getPastMatches,
-    getScheduledMatches: getScheduledMatches,
-    initialSportId: sportId,
-    initialLeagueId: leagueId,
-  );
-
-  // Sync sport selection
-  ref.listen<String>(selectedSportIdProvider, (prev, next) {
-    // Guard: only sync if actually changed and notifier isn't already at this state
-    if (prev != null && prev != next && next != notifier.selectedSportId) {
-      notifier.selectSport(next);
-    }
-  });
-
-  // Sync league selection
-  ref.listen<String?>(selectedLeagueIdProvider, (prev, next) {
-    // Guard: only sync if actually changed and notifier isn't already at this state
-    if (prev != next && next != notifier.selectedLeagueId) {
-      notifier.selectLeague(next);
-    }
-  });
-
-  return notifier;
-});
-
-// ─────────────────────────────────────────────────────────────────────────
-// MATCH DETAIL STATE NOTIFIER & PROVIDER
-// ─────────────────────────────────────────────────────────────────────────
-
-class _MatchDetailNotifier extends StateNotifier<MatchDetailState> {
-  _MatchDetailNotifier({
-    required this.args,
-    required this.getMatchCommentary,
-    required this.notificationPreferences,
-  }) : super(MatchDetailState.fallback(args.matchId)) {
-    if (args.initialMatch != null) {
-      state = state.copyWith(match: args.initialMatch!);
-    }
-    _livePollingInterval = PollingConfig.matchDetailLive;
-    _idlePollingInterval = PollingConfig.matchDetailIdle;
-    _start();
-  }
-
-  final MatchDetailArgs args;
-  final GetMatchCommentary getMatchCommentary;
-  final MatchNotificationPreferences notificationPreferences;
-
+@riverpod
+class MatchDetail extends _$MatchDetail {
+  late MatchDetailArgs _args;
   late Duration _livePollingInterval;
   late Duration _idlePollingInterval;
   bool _isDisposed = false;
-  bool _isFetching = false;
-
-  void _start() {
-    unawaited(_pollLoop());
-    unawaited(_fetch(silent: false));
-  }
-
-  Future<void> _pollLoop() async {
-    while (!_isDisposed) {
-      final wait = state.match.isLive ? _livePollingInterval : _idlePollingInterval;
-      await Future<void>.delayed(wait);
-      if (_isDisposed) break;
-      await _fetch(silent: true);
-    }
-  }
-
-  Future<void> refresh() => _fetch(silent: false);
-
-  Future<void> _fetch({required bool silent}) async {
-    if (_isFetching || _isDisposed) return;
-    _isFetching = true;
-
-    if (!silent) {
-      state = state.copyWith(isLoading: true);
-    }
-
-    // Simplified: just fetch commentary. For a complete implementation,
-    // you'd also fetch match details and events from the repository.
-    final commentaryResult = await getMatchCommentary(args.matchId);
-
-    commentaryResult.fold(
-      (failure) {
-        state = state.copyWith(
-          isLoading: false,
-          errorMessage: failure.message,
-        );
-      },
-      (commentary) {
-        state = state.copyWith(
-          commentary: commentary,
-          isLoading: false,
-          errorMessage: null,
-          lastUpdated: DateTime.now().toUtc(),
-        );
-      },
-    );
-
-    _isFetching = false;
-  }
+  bool _isPolling = false;
+  int _pollVersion = 0;
 
   @override
-  void dispose() {
-    _isDisposed = true;
-    super.dispose();
+  MatchDetailState build(MatchDetailArgs args) {
+    _args = args;
+    _livePollingInterval = PollingConfig.matchDetailLive;
+    _idlePollingInterval = PollingConfig.matchDetailIdle;
+
+    state = MatchDetailState.fallback(args.matchId);
+    if (args.initialMatch != null) {
+      state = state.copyWith(match: args.initialMatch!);
+    }
+    state = state.copyWith(isLoading: false);
+
+    _pollVersion++;
+    final buildVersion = _pollVersion;
+    _isPolling = false;
+
+    ref.onDispose(() {
+      _isDisposed = true;
+    });
+
+    Future.microtask(() => unawaited(_pollLoop(buildVersion)));
+    return state;
+  }
+
+  Future<void> _pollLoop(int buildVersion) async {
+    while (!_isDisposed && buildVersion == _pollVersion) {
+      final wait = state.match.isLive ? _livePollingInterval : _idlePollingInterval;
+      await Future<void>.delayed(wait);
+      if (_isDisposed || buildVersion != _pollVersion) break;
+      await refresh();
+    }
+  }
+
+  Future<void> refresh() async {
+    if (_isDisposed || _isPolling) return;
+    _isPolling = true;
+
+    await ref.read(matchCommentaryProvider(_args.matchId).notifier).poll();
+    if (_isDisposed) {
+      _isPolling = false;
+      return;
+    }
+
+    state = state.copyWith(
+      isLoading: false,
+      lastUpdated: DateTime.now().toUtc(),
+      errorMessage: null,
+    );
+
+    _isPolling = false;
   }
 }
 
-final matchDetailProvider =
-    StateNotifierProvider.autoDispose.family<_MatchDetailNotifier, MatchDetailState, MatchDetailArgs>(
-  (ref, args) {
-    final getMatchCommentary = ref.watch(getMatchCommentaryUseCaseProvider);
-    final notificationPreferences = ref.watch(matchNotificationPreferencesProvider);
-
-    final notifier = _MatchDetailNotifier(
-      args: args,
-      getMatchCommentary: getMatchCommentary,
-      notificationPreferences: notificationPreferences,
-    );
-
-    return notifier;
-  },
-);
-
-// ─────────────────────────────────────────────────────────────────────────
-// UTILITIES
-// ─────────────────────────────────────────────────────────────────────────
 
 String _canonicalSportId(String value) {
   if (value.toLowerCase() == 'soccer') {

@@ -1,6 +1,5 @@
-import 'package:dartz/dartz.dart';
-
 import '../../../../core/error/failures.dart';
+import '../../../../core/result.dart';
 import '../entities/commentary.dart';
 import '../repositories/matches_repository.dart';
 
@@ -9,7 +8,7 @@ class GetMatchCommentary {
 
 	final MatchesRepository _repository;
 
-	Future<Either<Failure, List<Commentary>>> call(
+	Future<Result<List<Commentary>, Failure>> call(
 		String matchId, {
 		int? since,
 	}) {

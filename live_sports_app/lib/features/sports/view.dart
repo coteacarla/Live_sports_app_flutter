@@ -10,18 +10,6 @@ import 'presentation/widgets/sport_category_tile.dart';
 import 'providers.dart';
 
 // ─────────────────────────────────────────────────────────────────────────
-// SPORTS SCREEN
-// ─────────────────────────────────────────────────────────────────────────
-
-/// Entry point for Sports view in navigation.
-class SportsScreen extends StatelessWidget {
-  const SportsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) => const SportsView();
-}
-
-// ─────────────────────────────────────────────────────────────────────────
 // SPORTS VIEW
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -35,46 +23,58 @@ class SportsView extends ConsumerWidget {
     final state = ref.watch(sportsProvider);
     final notifier = ref.read(sportsProvider.notifier);
 
-    // Note: selectedSportIdProvider is defined in matches/providers.dart
-    // and synced here for filtering across features
     final selectedSportId = ref.watch(selectedSportIdProvider);
 
-    // Sync external sport selection changes to the sports notifier
-    ref.listen<String>(selectedSportIdProvider, (prev, next) {
-      // Only sync if this is an actual change (not the initial build)
-      if (prev != null && prev != next && next != notifier.selectedSportId) {
-        notifier.selectSport(next);
-      }
-    });
+    final mq = MediaQuery.of(context);
+    final spacing = (mq.size.height * 0.02).clamp(8.0, 28.0);
+    final spacingSmall = (spacing * 0.6).clamp(6.0, 16.0);
+    final sportsSectionHeight = (mq.size.height * 0.16).clamp(88.0, 144.0);
 
     return SafeArea(
       child: RefreshIndicator(
         onRefresh: () => notifier.refresh(),
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Text('Sports', style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: 12),
-            _SportsSection(
-              sports: state.sports,
-              isLoading: state.isLoadingSports,
-              errorMessage: state.sportsErrorMessage,
-              selectedSportId: selectedSportId,
-              onSelectSport: (sport) {
-                // Only update the global state provider - the listener will sync to notifier
-                ref.read(selectedSportIdProvider.notifier).state = sport.slug;
-                ref.read(selectedLeagueIdProvider.notifier).state = null;
-              },
-              onRetry: () => notifier.refresh(),
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.all(16),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate(
+                  [
+                    Text('Sports', style: Theme.of(context).textTheme.headlineMedium),
+                    SizedBox(height: spacingSmall),
+                    SizedBox(
+                      height: sportsSectionHeight,
+                      child: _SportsSection(
+                        sports: state.sports,
+                        isLoading: state.isLoadingSports,
+                        errorMessage: state.sportsErrorMessage,
+                        selectedSportId: selectedSportId,
+                        onSelectSport: (sport) {
+                          ref.read(selectedSportIdProvider.notifier).setSportId(sport.slug);
+                          ref.read(selectedLeagueIdProvider.notifier).setLeagueId(null);
+                        },
+                        onRetry: () => notifier.refresh(),
+                      ),
+                    ),
+                    SizedBox(height: spacing),
+                    Text('Leagues', style: Theme.of(context).textTheme.titleLarge),
+                    SizedBox(height: spacingSmall),
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: 20),
-            Text('Leagues', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 8),
-            _LeaguesSection(
-              isLoading: state.isLoadingLeagues,
-              errorMessage: state.leaguesErrorMessage,
-              leagues: state.leagues,
-              onRetry: () => notifier.refresh(),
+
+            // Leagues list as a sliver for lazy rendering
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverToBoxAdapter(
+                child: _LeaguesSection(
+                  isLoading: state.isLoadingLeagues,
+                  errorMessage: state.leaguesErrorMessage,
+                  leagues: state.leagues,
+                  onRetry: () => notifier.refresh(),
+                ),
+              ),
             ),
           ],
         ),
@@ -107,8 +107,8 @@ class _SportsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLoading && sports.isEmpty) {
-      return const SizedBox(
-        height: 100,
+      return SizedBox(
+        height: (MediaQuery.of(context).size.height * 0.12).clamp(88.0, 132.0),
         child: AsyncStateView.loading(message: 'Loading sports...'),
       );
     }
@@ -131,8 +131,10 @@ class _SportsSection extends StatelessWidget {
       );
     }
 
+    final rowHeight = (MediaQuery.of(context).size.height * 0.12).clamp(88.0, 132.0);
+
     return SizedBox(
-      height: 100,
+      height: rowHeight,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemBuilder: (context, index) {

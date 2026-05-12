@@ -17,12 +17,16 @@ class SportCategoryTile extends StatelessWidget {
 	@override
 	Widget build(BuildContext context) {
 		final scheme = Theme.of(context).colorScheme;
+		final mq = MediaQuery.of(context);
+		final tileWidth = (mq.size.width * 0.34).clamp(120.0, 160.0);
+		final tilePadding = (mq.size.width * 0.03).clamp(10.0, 16.0);
+		final iconGap = (mq.size.height * 0.01).clamp(6.0, 12.0);
 		return InkWell(
 			onTap: onTap,
 			borderRadius: BorderRadius.circular(14),
 			child: Ink(
-				width: 140,
-				padding: const EdgeInsets.all(12),
+				width: tileWidth,
+				padding: EdgeInsets.all(tilePadding),
 				decoration: BoxDecoration(
 					color: isSelected ? scheme.primaryContainer : scheme.surfaceContainer,
 					borderRadius: BorderRadius.circular(14),
@@ -37,7 +41,7 @@ class SportCategoryTile extends StatelessWidget {
 							Icons.sports,
 							color: isSelected ? scheme.primary : scheme.onSurfaceVariant,
 						),
-						const SizedBox(height: 8),
+						SizedBox(height: iconGap),
 						Text(
 							sport.name,
 							maxLines: 1,

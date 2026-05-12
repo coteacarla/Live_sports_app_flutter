@@ -3,6 +3,7 @@ import 'dart:math';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../domain/entities/match.dart';
+import '../../../sports/domain/entities/sport.dart';
 import '../../domain/repositories/matches_repository.dart';
 import '../models/espn/espn_models.dart';
 import '../models/match_event_commentary.dart';
@@ -11,7 +12,8 @@ import '../models/team_model.dart';
 
 abstract class MatchesRemoteDataSource {
   Future<List<MatchModel>> getLiveMatches({String? sportId});
-  Future<List<MatchModel>> getLiveMatchesByLeague(String leagueId, {String? sportId});
+  Future<List<MatchModel>> getLiveMatchesByLeague(String leagueId,
+      {String? sportId});
   Future<List<MatchModel>> getPastMatches({
     required PaginationParams pagination,
     MatchFilters filters,
@@ -23,38 +25,144 @@ abstract class MatchesRemoteDataSource {
   Future<List<MatchModel>> getMatchesByDate(DateTime date);
   Future<MatchModel> getMatchById(String matchId);
   Future<List<MatchEventModel>> getMatchEvents(String matchId);
-  Future<List<CommentaryModel>> getMatchCommentary(String matchId, {int? since});
+  Future<List<CommentaryModel>> getMatchCommentary(String matchId,
+      {int? since});
 }
 
 class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
-  const MatchesRemoteDataSourceImpl({required DioClient dioClient})
+  MatchesRemoteDataSourceImpl({required DioClient dioClient})
       : _dio = dioClient;
 
   final DioClient _dio;
-  static const Duration _resultsCacheTtl = Duration(seconds: 45);
-  static final Map<String, _ResultsCacheEntry> _resultsCache =
-    <String, _ResultsCacheEntry>{};
-  static final Map<String, Future<List<MatchModel>>> _resultsInFlight =
-    <String, Future<List<MatchModel>>>{};
-  static final Map<String, _EspnEventMeta> _espnMetaCache =
-    <String, _EspnEventMeta>{};
-  static final Map<String, Future<List<CommentaryModel>>> _espnCommentaryInFlight =
-    <String, Future<List<CommentaryModel>>>{};
+  static final RegExp _espnScoreboardEndpointPattern =
+    RegExp(r'/sports/([^/]+)/([^/]+)/scoreboard');
+  static final RegExp _espnEventPathPattern =
+    RegExp(r'/sports/([^/]+)/([^/]+)/');
+  static final RegExp _digitsPattern = RegExp(r'(\d+)');
+
+  // In-memory caches populated as a side-effect of every scoreboard fetch.
+  // This avoids redundant HTTP round-trips when opening match detail or commentary.
+  final _matchCache = <String, MatchModel>{};
+  Map<String, _EspnEventMeta>? _metaIndexCache;
+  DateTime? _metaIndexCachedAt;
+  static const _metaIndexTtl = Duration(minutes: 10);
 
   @override
   Future<List<MatchModel>> getLiveMatches({String? sportId}) async {
-    final all = await _collectEspnMatches(
-      fromOffsetDays: -1,
-      toOffsetDays: 1,
+    final endpoints = _resolveEspnEndpoints(sportId);
+
+    // First: fetch without a date filter — ESPN returns the current tournament
+    // week by default, which is exactly what the Live tab needs.
+    final current = await _fetchCurrentScoreboards(endpoints, sportId: sportId);
+    if (current.isNotEmpty) return current;
+
+    // Fallback: some endpoints only respond to explicit date queries.
+    final expanded = await _collectEspnMatches(
+      fromOffsetDays: -7,
+      toOffsetDays: 7,
       sportId: sportId,
+      baseDate: DateTime.now().toUtc(),
+      endpoints: endpoints,
     );
-    return all.where((match) => match.status == MatchStatus.live).toList(growable: false);
+    return expanded.toList(growable: false);
+  }
+
+  /// Fetches all sport endpoints without a date query and collects results.
+  /// ESPN scoreboard endpoints default to the current/upcoming week of events.
+  Future<List<MatchModel>> _fetchCurrentScoreboards(
+    List<String> endpoints, {
+    String? sportId,
+  }) async {
+    final expectedSport = sportId != null ? _canonicalSportId(sportId) : null;
+    final seen = <String>{};
+    final all = <MatchModel>[];
+
+    final scoreboards = await Future.wait(
+      endpoints
+          .map((ep) => _fetchEspnScoreboardForDate(endpoint: ep))
+          .toList(growable: false),
+    );
+
+    for (var i = 0; i < endpoints.length; i++) {
+      final endpointPath = _parseEspnEndpointPath(endpoints[i]);
+      print('Current scoreboard ${endpoints[i]}: ${scoreboards[i].events.length} events');
+      for (final rawEvent in scoreboards[i].events) {
+        try {
+          final metaPath = endpointPath ?? _pathFromEspnEvent(rawEvent);
+          if (metaPath != null) {
+            _metaIndexCache ??= {};
+            _metaIndexCache!.putIfAbsent(
+              rawEvent.id,
+              () => _EspnEventMeta(
+                eventId: rawEvent.id,
+                sportPath: metaPath.sportPath,
+                leaguePath: metaPath.leaguePath,
+              ),
+            );
+            _metaIndexCachedAt ??= DateTime.now().toUtc();
+          }
+
+          final normalizedSport = expectedSport ?? _sportIdFromEspnEvent(rawEvent);
+          if (sportId != null &&
+              sportId.isNotEmpty &&
+              normalizedSport != _canonicalSportId(sportId)) {
+            continue;
+          }
+
+          final mapped = _mapEspnEventToMatch(rawEvent, sportId: normalizedSport);
+          if (mapped.id.isEmpty || seen.contains(mapped.id)) continue;
+          seen.add(mapped.id);
+          all.add(mapped);
+          _matchCache[mapped.id] = mapped;
+          print('  ✓ Current: ${mapped.id} (${mapped.homeTeam.name} vs ${mapped.awayTeam.name})');
+        } catch (e) {
+          print('  ✗ Parse error for event ${rawEvent.id}: $e');
+          continue;
+        }
+      }
+    }
+
+    return all;
   }
 
   @override
-  Future<List<MatchModel>> getLiveMatchesByLeague(String leagueId, {String? sportId}) async {
-    final live = await getLiveMatches(sportId: sportId);
-    return live.where((match) => match.leagueId == leagueId).toList(growable: false);
+  Future<List<MatchModel>> getLiveMatchesByLeague(String leagueId,
+      {String? sportId}) async {
+    // Try cache first — avoid a full re-fetch just for a league filter.
+    final canonical = sportId != null ? _canonicalSportId(sportId) : null;
+    if (_matchCache.isNotEmpty) {
+      final sportMatches = _matchCache.values
+          .where((m) => canonical == null || m.sportId == canonical)
+          .toList(growable: false);
+      if (sportMatches.isNotEmpty) {
+        return _filterByLeagueName(sportMatches, leagueId);
+      }
+    }
+
+    // Cache miss — fetch current scoreboard then filter in memory.
+    final endpoints = _resolveEspnEndpoints(sportId);
+    final all = await _fetchCurrentScoreboards(endpoints, sportId: sportId);
+    return _filterByLeagueName(all, leagueId);
+  }
+
+  /// Filters [matches] by [leagueId] using case-insensitive substring matching.
+  /// Falls back to the full list when no match is found so the screen is never
+  /// left empty due to a league-name mismatch between TheSportsDB and ESPN.
+  List<MatchModel> _filterByLeagueName(List<MatchModel> matches, String leagueId) {
+    if (leagueId.isEmpty) return matches;
+    final ll = leagueId.toLowerCase();
+    final filtered = matches.where((m) {
+      final ml = m.leagueId.toLowerCase();
+      return ml.isNotEmpty && (ml.contains(ll) || ll.contains(ml));
+    }).toList(growable: false);
+    return filtered.isNotEmpty ? filtered : matches;
+  }
+
+  bool _leagueNameMatches(String matchLeagueId, String filterLeagueId) {
+    if (filterLeagueId.isEmpty) return true;
+    final ml = matchLeagueId.toLowerCase();
+    final fl = filterLeagueId.toLowerCase();
+    return ml.isNotEmpty && (ml.contains(fl) || fl.contains(ml));
   }
 
   @override
@@ -101,28 +209,75 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
 
   @override
   Future<List<MatchModel>> getMatchesByDate(DateTime date) async {
-    final target = DateTime.utc(date.toUtc().year, date.toUtc().month, date.toUtc().day);
+    final target =
+        DateTime.utc(date.toUtc().year, date.toUtc().month, date.toUtc().day);
     final all = await _collectEspnMatches(
       fromOffsetDays: 0,
       toOffsetDays: 0,
       baseDate: target,
     );
-    return all.where((match) => _isSameUtcDay(match.scheduledAt, target)).toList(growable: false);
+    var results = all
+        .where((match) => _isSameUtcDay(match.scheduledAt, target))
+        .toList(growable: false);
+
+    // If no matches were found for the exact date, search a nearby window and
+    // return matches from the nearest non-empty day. This provides useful
+    // fallback content instead of an empty list when APIs report nearby days.
+    if (results.isEmpty) {
+      final expanded = await _collectEspnMatches(
+        fromOffsetDays: -3,
+        toOffsetDays: 3,
+        baseDate: target,
+      );
+      if (expanded.isNotEmpty) {
+        // Group by UTC day and pick the group whose day is closest to target.
+        final groups = <DateTime, List<MatchModel>>{};
+        for (final m in expanded) {
+          final day = DateTime.utc(m.scheduledAt.year, m.scheduledAt.month, m.scheduledAt.day);
+          groups.putIfAbsent(day, () => []).add(m);
+        }
+        DateTime? bestDay;
+        var bestDistance = double.infinity;
+        for (final day in groups.keys) {
+          final dist = (day.difference(target).inDays).abs().toDouble();
+          if (dist < bestDistance) {
+            bestDistance = dist;
+            bestDay = day;
+          }
+        }
+        if (bestDay != null) results = groups[bestDay]!.toList(growable: false);
+      }
+    }
+
+    return results;
   }
 
   @override
   Future<MatchModel> getMatchById(String matchId) async {
+    if (_matchCache.containsKey(matchId)) return _matchCache[matchId]!;
+
     if (_isEspnMatchId(matchId)) {
-      final all = await _collectEspnMatches(
-        fromOffsetDays: -2,
-        toOffsetDays: 10,
+      // Narrow window first — covers the vast majority of use-cases
+      final narrow = await _collectEspnMatches(
+        fromOffsetDays: -1,
+        toOffsetDays: 1,
       );
-      final found = all.where((match) => match.id == matchId).toList(growable: false);
+      final found = narrow.where((m) => m.id == matchId).toList(growable: false);
       if (found.isNotEmpty) return found.first;
+
+      // Wider fallback for past/future matches
+      final wide = await _collectEspnMatches(
+        fromOffsetDays: -7,
+        toOffsetDays: 7,
+      );
+      final foundWide = wide.where((m) => m.id == matchId).toList(growable: false);
+      if (foundWide.isNotEmpty) return foundWide.first;
+
       throw StateError('Match not found: $matchId');
     }
 
-    throw StateError('Non-ESPN matches are not supported. Use ESPN match IDs (espn_*)');
+    throw StateError(
+        'Non-ESPN matches are not supported. Use ESPN match IDs (espn_*)');
   }
 
   @override
@@ -132,64 +287,11 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
   }
 
   @override
-  Future<List<CommentaryModel>> getMatchCommentary(String matchId, {int? since}) async {
-    final espn = await _getEspnCommentary(matchId, since: since);
-    if (espn.isNotEmpty) return espn;
-    
-    final match = await getMatchById(matchId);
-    return _buildFallbackCommentary(match, since: since);
+  Future<List<CommentaryModel>> getMatchCommentary(String matchId,
+      {int? since}) async {
+    final espn = await _fetchEspnSummaryCommentary(matchId, since: since);
+    return espn;
   }
-
-  List<CommentaryModel> _buildFallbackCommentary(MatchModel match, {int? since}) {
-    final minute = match.elapsed ?? 0;
-    final statusText = switch (match.status) {
-      MatchStatus.live => 'Live update',
-      MatchStatus.paused => 'Match paused',
-      MatchStatus.finished => 'Full time',
-      MatchStatus.scheduled || MatchStatus.prematch => 'Scheduled',
-      MatchStatus.postponed => 'Postponed',
-      MatchStatus.cancelled => 'Cancelled',
-      MatchStatus.unknown => 'Status update',
-    };
-
-    final score =
-        '${match.homeTeam.name} ${match.homeScore ?? 0} - ${match.awayScore ?? 0} ${match.awayTeam.name}';
-    final timeNote = match.isScheduled
-        ? 'Kickoff at ${match.scheduledAt.toLocal().toIso8601String().substring(0, 16).replaceFirst('T', ' ')}'
-        : "At $minute'";
-
-    final item = CommentaryModel(
-      id: 'fallback_${match.id}_${match.elapsed ?? 0}_${match.homeScore ?? 0}_${match.awayScore ?? 0}',
-      matchId: match.id,
-      minute: minute,
-      text: '$statusText. $score. $timeNote.',
-      isKeyEvent: true,
-      publishedAt: DateTime.now().toUtc(),
-    );
-
-    if (since != null && item.minute <= since) {
-      return const <CommentaryModel>[];
-    }
-    return <CommentaryModel>[item];
-  }
-
-  Future<List<CommentaryModel>> _getEspnCommentary(
-    String matchId, {
-    int? since,
-  }) async {
-    final key = '$matchId:${since ?? 'all'}';
-    final inFlight = _espnCommentaryInFlight[key];
-    if (inFlight != null) return inFlight;
-
-    final future = _fetchEspnSummaryCommentary(matchId, since: since);
-    _espnCommentaryInFlight[key] = future;
-    try {
-      return await future;
-    } finally {
-      _espnCommentaryInFlight.remove(key);
-    }
-  }
-
 
   Future<List<CommentaryModel>> _fetchEspnSummaryCommentary(
     String matchId, {
@@ -205,16 +307,19 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
         {'event': meta.eventId},
       );
 
-      final response = await _dio.instance.get<Map<String, dynamic>>(uri.toString());
+      final response =
+          await _dio.instance.get<Map<String, dynamic>>(uri.toString());
       if (response.data == null) return const <CommentaryModel>[];
-      
-      final summaryResponse = EspnSummaryResponse.fromJson(response.data!);
-      final items = _extractEspnCommentaryItems(summaryResponse);
+
+      final raw = response.data!;
+      final summaryResponse = EspnSummaryResponse.fromJson(raw);
+      final items = _extractEspnCommentaryItems(summaryResponse, raw);
       if (items.isEmpty) return const <CommentaryModel>[];
 
       final commentary = <CommentaryModel>[];
       for (var index = 0; index < items.length; index++) {
-        final mapped = _mapEspnCommentaryItem(items[index], matchId: matchId, index: index);
+        final mapped = _mapEspnCommentaryItem(items[index],
+            matchId: matchId, index: index);
         if (since == null || mapped.minute > since) {
           commentary.add(mapped);
         }
@@ -228,68 +333,58 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
   }
 
   Future<_EspnEventMeta?> _getEspnMeta(String matchId) async {
-    final cached = _espnMetaCache[matchId];
-    if (cached != null) return cached;
-
     final rawId = matchId.replaceFirst('espn_', '').trim();
     if (rawId.isEmpty) return null;
+    final index = await _buildEspnMetaIndex();
+    return index[rawId];
+  }
 
-    final endpoints = _resolveEspnEndpoints(null);
-    final seedDate = DateTime.now().toUtc();
+  List<EspnCommentaryItem> _extractEspnCommentaryItems(
+      EspnSummaryResponse data, Map<String, dynamic> raw) {
+    final items = <EspnCommentaryItem>[];
 
-    for (var offset = -2; offset <= 10; offset++) {
-      final day = seedDate.add(Duration(days: offset));
-      final dateQuery = _formatEspnDate(day);
+    // article.commentary / article.items
+    final article = data.article;
+    if (article != null) {
+      if (article.commentary.isNotEmpty) items.addAll(article.commentary);
+      if (article.items.isNotEmpty) items.addAll(article.items);
+    }
 
-      final eventsByEndpoint = await Future.wait(
-        endpoints
-            .map((endpoint) =>
-                _fetchEspnEventsForDate(endpoint: endpoint, dateQuery: dateQuery))
-            .toList(growable: false),
-      );
+    // root commentary array
+    if (data.commentary.isNotEmpty) items.addAll(data.commentary);
 
-      for (var index = 0; index < endpoints.length; index++) {
-        final endpoint = endpoints[index];
-        final events = eventsByEndpoint[index];
-        for (final rawEvent in events) {
-          final eventId = rawEvent.id;
-          if (eventId != rawId) continue;
-          final path = _parseEspnEndpointPath(endpoint) ?? _pathFromEspnEvent(rawEvent);
-          if (path == null) return null;
-          final meta = _EspnEventMeta(
-            eventId: eventId,
-            sportPath: path.sportPath,
-            leaguePath: path.leaguePath,
-          );
-          _espnMetaCache[matchId] = meta;
-          return meta;
+    // plays / keyPlays (play-by-play present in most ESPN sports)
+    for (final key in const ['plays', 'keyPlays', 'playByPlay']) {
+      final plays = raw[key];
+      if (plays is List) {
+        for (final play in plays) {
+          if (play is! Map) continue;
+          final p = play.cast<String, dynamic>();
+          try {
+            items.add(EspnCommentaryItem.fromJson(p));
+          } catch (_) {
+            // Build a minimal item from common play fields
+            final text = (p['text'] ?? p['shortText'] ?? p['description'] ?? '').toString();
+            if (text.isNotEmpty) {
+              items.add(EspnCommentaryItem(
+                id: (p['id'] ?? p['playId'] ?? '').toString(),
+                text: text,
+                minute: (p['period']?['number'] as num?)?.toInt() ?? 0,
+                scoringPlay: p['scoringPlay'] == true,
+              ));
+            }
+          }
         }
       }
     }
 
-    return null;
-  }
-
-  List<EspnCommentaryItem> _extractEspnCommentaryItems(EspnSummaryResponse data) {
-    final items = <EspnCommentaryItem>[];
-    
-    // Try to get from article first
-    final article = data.article;
-    if (article != null) {
-      if (article.commentary.isNotEmpty) {
-        items.addAll(article.commentary);
-      }
-      if (article.items.isNotEmpty) {
-        items.addAll(article.items);
-      }
-    }
-    
-    // Try to get directly from root
-    if (data.commentary.isNotEmpty) {
-      items.addAll(data.commentary);
-    }
-    
-    return items;
+    // Deduplicate by id
+    final seen = <String>{};
+    return items.where((item) {
+      final id = item.id ?? '';
+      if (id.isEmpty) return true;
+      return seen.add(id);
+    }).toList(growable: false);
   }
 
   CommentaryModel _mapEspnCommentaryItem(
@@ -297,12 +392,10 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
     required String matchId,
     required int index,
   }) {
-    final id = raw.id ?? raw.playId ?? raw.sequence?.toString() ?? index.toString();
-    final text = raw.text ??
-        raw.shortText ??
-        raw.headline ??
-        raw.description ??
-        '';
+    final id =
+        raw.id ?? raw.playId ?? raw.sequence?.toString() ?? index.toString();
+    final text =
+        raw.text ?? raw.shortText ?? raw.headline ?? raw.description ?? '';
     final minute = raw.minute ?? 0;
     final type = (raw.type ?? raw.typeText ?? '').toLowerCase();
     final loweredText = (raw.text ?? raw.shortText ?? '').toLowerCase();
@@ -327,52 +420,100 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
   }
 
   Future<List<MatchModel>> _getResultsWindow({String? sportId}) async {
-    final key = _resultsCacheKey(sportId);
-    final now = DateTime.now().toUtc();
-    final cached = _resultsCache[key];
-    if (cached != null && now.difference(cached.fetchedAt) <= _resultsCacheTtl) {
-      return cached.items;
-    }
-
-    final inFlight = _resultsInFlight[key];
-    if (inFlight != null) {
-      return inFlight;
-    }
-
-    final future = _collectEspnMatches(
-      fromOffsetDays: -10,
-      toOffsetDays: 10,
+    final dated = await _collectEspnMatches(
+      fromOffsetDays: -14,
+      toOffsetDays: 14,
       sportId: sportId,
     );
-    _resultsInFlight[key] = future;
+    if (dated.isNotEmpty) return dated;
 
+    // Fallback for endpoints that ignore the ?dates= parameter (e.g. tennis).
+    // The no-date scoreboard returns the current week, which covers most
+    // live, recent-past and near-future matches for those sports.
+    final endpoints = _resolveEspnEndpoints(sportId);
+    return _fetchCurrentScoreboards(endpoints, sportId: sportId);
+  }
+
+  Future<EspnScoreboardResponse> _fetchEspnScoreboardForDate({
+    required String endpoint,
+    String? dateQuery,
+  }) async {
     try {
-      final items = await future;
-      _resultsCache[key] = _ResultsCacheEntry(
-        items: items,
-        fetchedAt: DateTime.now().toUtc(),
+      final uri = dateQuery != null
+          ? Uri.parse(endpoint).replace(queryParameters: {'dates': dateQuery})
+          : Uri.parse(endpoint);
+      print('MatchesRemoteDataSource GET $uri');
+      final response = await _dio.instance.get<Map<String, dynamic>>(
+        uri.toString(),
       );
-      return items;
-    } finally {
-      _resultsInFlight.remove(key);
+      if (response.data == null) {
+        print('  → Response data is null');
+        return const EspnScoreboardResponse();
+      }
+      final raw = response.data!;
+      // Log the top-level keys so we can see the response shape for each sport.
+      print('  → Keys: ${raw.keys.toList()}'
+          ' events=${raw['events'] is List ? (raw['events'] as List).length : 'n/a'}'
+          ' sports=${raw['sports'] is List ? (raw['sports'] as List).length : 'n/a'}'
+          ' leagues=${raw['leagues'] is List ? (raw['leagues'] as List).length : 'n/a'}');
+      final parsed = EspnScoreboardResponse.fromJson(raw);
+      print('  → Parsed ${parsed.events.length} events from response');
+      return parsed;
+    } catch (e) {
+      print('  → Error fetching ESPN scoreboard: $e');
+      return const EspnScoreboardResponse();
     }
   }
 
-  Future<List<EspnEvent>> _fetchEspnEventsForDate({
-    required String endpoint,
-    required String dateQuery,
-  }) async {
-    try {
-      final response = await _dio.instance.get<Map<String, dynamic>>(
-        endpoint,
-        queryParameters: {'dates': dateQuery},
-      );
-      if (response.data == null) return const [];
-      final scoreboard = EspnScoreboardResponse.fromJson(response.data!);
-      return scoreboard.events;
-    } catch (_) {
-      return const [];
+  Future<Map<String, _EspnEventMeta>> _buildEspnMetaIndex() async {
+    // Return cached index if still fresh — avoids 130 redundant HTTP requests.
+    final now = DateTime.now().toUtc();
+    final cached = _metaIndexCache;
+    final builtAt = _metaIndexCachedAt;
+    if (cached != null && builtAt != null && now.difference(builtAt) < _metaIndexTtl) {
+      return cached;
     }
+
+    final index = <String, _EspnEventMeta>{};
+    final endpoints = _resolveEspnEndpoints(null);
+    final seedDate = now;
+
+    for (var offset = -2; offset <= 10; offset++) {
+      final day = seedDate.add(Duration(days: offset));
+      final dateQuery = _formatEspnDate(day);
+
+      final scoreboards = await Future.wait(
+        endpoints
+            .map(
+              (endpoint) => _fetchEspnScoreboardForDate(
+                endpoint: endpoint,
+                dateQuery: dateQuery,
+              ),
+            )
+            .toList(growable: false),
+      );
+
+      for (var indexPosition = 0; indexPosition < endpoints.length; indexPosition++) {
+        final endpoint = endpoints[indexPosition];
+        final endpointPath = _parseEspnEndpointPath(endpoint);
+        for (final rawEvent in scoreboards[indexPosition].events) {
+          final path = endpointPath ?? _pathFromEspnEvent(rawEvent);
+          if (path == null) continue;
+          index.putIfAbsent(
+            rawEvent.id,
+            () => _EspnEventMeta(
+              eventId: rawEvent.id,
+              sportPath: path.sportPath,
+              leaguePath: path.leaguePath,
+            ),
+          );
+        }
+      }
+    }
+
+    _metaIndexCache = index;
+    _metaIndexCachedAt = now;
+    return index;
   }
 
   Future<List<MatchModel>> _collectEspnMatches({
@@ -380,46 +521,79 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
     required int toOffsetDays,
     String? sportId,
     DateTime? baseDate,
+    List<String>? endpoints,
   }) async {
-    final endpoints = _resolveEspnEndpoints(sportId);
+    final resolvedEndpoints = endpoints ?? _resolveEspnEndpoints(sportId);
     final seedDate = (baseDate ?? DateTime.now().toUtc()).toUtc();
     final seen = <String>{};
     final all = <MatchModel>[];
     // If we're requesting a specific sport, trust that the endpoint will return that sport
     final expectedSport = sportId != null ? _canonicalSportId(sportId) : null;
 
+    print('_collectEspnMatches: sportId=$sportId, expectedSport=$expectedSport, endpoints=${resolvedEndpoints.length}, range=$fromOffsetDays to $toOffsetDays');
+
     for (var offset = fromOffsetDays; offset <= toOffsetDays; offset++) {
       final day = seedDate.add(Duration(days: offset));
       final dateQuery = _formatEspnDate(day);
 
-      final eventsByEndpoint = await Future.wait(
-        endpoints
-            .map((endpoint) =>
-                _fetchEspnEventsForDate(endpoint: endpoint, dateQuery: dateQuery))
+      final scoreboardsByEndpoint = await Future.wait(
+        resolvedEndpoints
+            .map((endpoint) => _fetchEspnScoreboardForDate(
+                endpoint: endpoint, dateQuery: dateQuery))
             .toList(growable: false),
       );
 
-      for (var index = 0; index < endpoints.length; index++) {
-        final endpoint = endpoints[index];
-        final events = eventsByEndpoint[index];
-        final endpointPath = _parseEspnEndpointPath(endpoint);
+      for (var index = 0; index < resolvedEndpoints.length; index++) {
+        final events = scoreboardsByEndpoint[index].events;
+        final endpointPath = _parseEspnEndpointPath(resolvedEndpoints[index]);
+        print('Endpoint $index: ${resolvedEndpoints[index]} has ${events.length} events');
         for (final rawEvent in events) {
-          final normalizedSport = expectedSport ?? _sportIdFromEspnEvent(rawEvent);
-          if (sportId != null &&
-              sportId.isNotEmpty &&
-              normalizedSport != _canonicalSportId(sportId)) {
+          try {
+            // Populate meta index as a side-effect so commentary lookup is instant.
+            final metaPath = endpointPath ?? _pathFromEspnEvent(rawEvent);
+            if (metaPath != null) {
+              _metaIndexCache ??= {};
+              _metaIndexCache!.putIfAbsent(
+                rawEvent.id,
+                () => _EspnEventMeta(
+                  eventId: rawEvent.id,
+                  sportPath: metaPath.sportPath,
+                  leaguePath: metaPath.leaguePath,
+                ),
+              );
+              _metaIndexCachedAt ??= DateTime.now().toUtc();
+            }
+
+            final normalizedSport =
+                expectedSport ?? _sportIdFromEspnEvent(rawEvent);
+            if (sportId != null &&
+                sportId.isNotEmpty &&
+                normalizedSport != _canonicalSportId(sportId)) {
+              print('  Skipping event ${rawEvent.id}: sport mismatch (expected $sportId, got $normalizedSport)');
+              continue;
+            }
+
+            final mapped =
+                _mapEspnEventToMatch(rawEvent, sportId: normalizedSport);
+            if (mapped.id.isEmpty || seen.contains(mapped.id)) {
+              if (mapped.id.isEmpty) print('  Skipping event: empty ID');
+              if (seen.contains(mapped.id)) print('  Skipping duplicate event ${mapped.id}');
+              continue;
+            }
+            seen.add(mapped.id);
+            all.add(mapped);
+            _matchCache[mapped.id] = mapped;
+            print('  ✓ Added match: ${mapped.id} (${mapped.homeTeam.name} vs ${mapped.awayTeam.name}, status=${mapped.status.name})');
+          } catch (error, stackTrace) {
+            print('Failed to parse ESPN event ${rawEvent.id}: $error');
+            print(stackTrace);
             continue;
           }
-
-          final mapped = _mapEspnEventToMatch(rawEvent, sportId: normalizedSport);
-          if (mapped.id.isEmpty || seen.contains(mapped.id)) continue;
-          _cacheEspnMeta(mapped.id, rawEvent: rawEvent, endpointPath: endpointPath);
-          seen.add(mapped.id);
-          all.add(mapped);
         }
       }
     }
 
+    print('_collectEspnMatches result: ${all.length} total matches collected');
     return all;
   }
 
@@ -436,8 +610,6 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
         .toList(growable: false);
   }
 
-
-
   List<MatchModel> _applyFilters(
     List<MatchModel> items,
     MatchFilters filters, {
@@ -446,9 +618,10 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
     return items.where((match) {
       final withinFrom =
           filters.from == null || !match.scheduledAt.isBefore(filters.from!);
-      final withinTo = filters.to == null || !match.scheduledAt.isAfter(filters.to!);
-      final leagueMatch =
-          filters.leagueId == null || match.leagueId == filters.leagueId;
+      final withinTo =
+          filters.to == null || !match.scheduledAt.isAfter(filters.to!);
+      final leagueMatch = filters.leagueId == null ||
+          _leagueNameMatches(match.leagueId, filters.leagueId!);
       final teamMatch = filters.teamId == null ||
           match.homeTeam.id == filters.teamId ||
           match.awayTeam.id == filters.teamId;
@@ -456,39 +629,25 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
           filters.sportId == null ||
           match.sportId == _canonicalSportId(filters.sportId!);
       final roundMatch = filters.round == null || match.round == filters.round;
-      return withinFrom && withinTo && leagueMatch && teamMatch && sportMatch && roundMatch;
+      return withinFrom &&
+          withinTo &&
+          leagueMatch &&
+          teamMatch &&
+          sportMatch &&
+          roundMatch;
     }).toList(growable: false);
   }
 
-  List<MatchModel> _paginate(List<MatchModel> items, PaginationParams pagination) {
+  List<MatchModel> _paginate(
+      List<MatchModel> items, PaginationParams pagination) {
     final start = max(0, (pagination.page - 1) * pagination.perPage);
     if (start >= items.length) return const [];
     final end = min(items.length, start + pagination.perPage);
     return items.sublist(start, end);
   }
 
-  void _cacheEspnMeta(
-    String matchId, {
-    required EspnEvent rawEvent,
-    required _EspnEndpointPath? endpointPath,
-  }) {
-    if (_espnMetaCache.containsKey(matchId)) return;
-    final eventId = rawEvent.id;
-    if (eventId.isEmpty) return;
-
-    final path = endpointPath ?? _pathFromEspnEvent(rawEvent);
-    if (path == null) return;
-
-    _espnMetaCache[matchId] = _EspnEventMeta(
-      eventId: eventId,
-      sportPath: path.sportPath,
-      leaguePath: path.leaguePath,
-    );
-  }
-
   _EspnEndpointPath? _parseEspnEndpointPath(String endpoint) {
-    final match = RegExp(r'/sports/([^/]+)/([^/]+)/scoreboard')
-        .firstMatch(endpoint);
+    final match = _espnScoreboardEndpointPattern.firstMatch(endpoint);
     if (match == null) return null;
     return _EspnEndpointPath(
       sportPath: match.group(1)!,
@@ -500,7 +659,7 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
     final links = rawEvent.links;
     for (final link in links) {
       final href = link.href ?? '';
-      final match = RegExp(r'/sports/([^/]+)/([^/]+)/').firstMatch(href);
+      final match = _espnEventPathPattern.firstMatch(href);
       if (match != null) {
         return _EspnEndpointPath(
           sportPath: match.group(1)!,
@@ -511,8 +670,10 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
 
     final sportSlug = rawEvent.sport?.slug;
     final leagueSlug = rawEvent.league?.slug;
-    if (sportSlug != null && sportSlug.isNotEmpty &&
-        leagueSlug != null && leagueSlug.isNotEmpty) {
+    if (sportSlug != null &&
+        sportSlug.isNotEmpty &&
+        leagueSlug != null &&
+        leagueSlug.isNotEmpty) {
       return _EspnEndpointPath(
         sportPath: sportSlug,
         leaguePath: leagueSlug,
@@ -520,13 +681,6 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
     }
 
     return null;
-  }
-
-  String _resultsCacheKey(String? sportId) {
-    final normalized = (sportId == null || sportId.isEmpty)
-        ? 'all'
-        : _canonicalSportId(sportId);
-    return 'results_$normalized';
   }
 
   String _formatEspnDate(DateTime date) {
@@ -539,7 +693,9 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
   static bool _isSameUtcDay(DateTime a, DateTime b) {
     final left = a.toUtc();
     final right = b.toUtc();
-    return left.year == right.year && left.month == right.month && left.day == right.day;
+    return left.year == right.year &&
+        left.month == right.month &&
+        left.day == right.day;
   }
 
   static int? _parseEspnElapsed(String? raw) {
@@ -550,7 +706,7 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
       if (minute != null) return minute;
     }
 
-    final regexpMatch = RegExp(r'(\d+)').firstMatch(raw);
+    final regexpMatch = _digitsPattern.firstMatch(raw);
     if (regexpMatch == null) return null;
     return int.tryParse(regexpMatch.group(1)!);
   }
@@ -567,13 +723,20 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
 
     EspnCompetitor? home;
     EspnCompetitor? away;
-    for (final competitor in competitors) {
-      final homeAway = (competitor.homeAway ?? '').toLowerCase();
-      if (homeAway == 'home') home = competitor;
-      if (homeAway == 'away') away = competitor;
+    try {
+      home = competitors.firstWhere(
+        (c) => (c.homeAway ?? '').toLowerCase() == 'home',
+      );
+    } catch (_) {
+      home = competitors.isNotEmpty ? competitors.first : null;
     }
-    home ??= competitors.isNotEmpty ? competitors.first : null;
-    away ??= competitors.length > 1 ? competitors[1] : null;
+    try {
+      away = competitors.firstWhere(
+        (c) => (c.homeAway ?? '').toLowerCase() == 'away',
+      );
+    } catch (_) {
+      away = competitors.length > 1 ? competitors[1] : null;
+    }
 
     final scheduledAt =
         DateTime.tryParse(rawEvent.date)?.toUtc() ?? DateTime.now().toUtc();
@@ -594,27 +757,46 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
 
     final league = rawEvent.league;
     final leagueId = (league?.name ??
-        league?.slug ??
-        competition?.type?.name ??
-        competition?.type?.abbreviation ??
-        league?.id ??
-        competition?.id ??
-        '')
-      .toString();
+            league?.slug ??
+            competition?.type?.name ??
+            competition?.type?.abbreviation ??
+            league?.id ??
+            competition?.id ??
+            '')
+        .toString();
 
-    final homeTeam = _espnCompetitorToTeam(home);
-    final awayTeam = _espnCompetitorToTeam(away);
+    var homeTeam = _espnCompetitorToTeam(home);
+    var awayTeam = _espnCompetitorToTeam(away);
+
+    // Last-resort fallback: parse "Player A vs. Player B" from the event title.
+    // Covers individual sports (tennis, golf) where competitor parsing may fail.
+    if (homeTeam.name == 'Unknown' || awayTeam.name == 'Unknown') {
+      for (final sep in const [' vs. ', ' vs ']) {
+        if (rawEvent.name.contains(sep)) {
+          final parts = rawEvent.name.split(sep);
+          if (parts.length >= 2) {
+            if (homeTeam.name == 'Unknown') {
+              homeTeam = homeTeam.copyWith(name: parts.first.trim());
+            }
+            if (awayTeam.name == 'Unknown') {
+              awayTeam = awayTeam.copyWith(name: parts.last.trim());
+            }
+          }
+          break;
+        }
+      }
+    }
 
     return MatchModel(
       id: 'espn_${rawEvent.id}',
       leagueId: leagueId,
-      sportId: sportId,
+      sportType: SportType.fromApiValue(sportId),
       homeTeam: homeTeam,
       awayTeam: awayTeam,
       scheduledAt: scheduledAt,
       status: matchStatus,
-      homeScore: home?.score,
-      awayScore: away?.score,
+      homeScore: home?.score?.toString(),
+      awayScore: away?.score?.toString(),
       elapsed: elapsed,
       venue: competition?.venue?.fullName,
       round: competition?.type?.abbreviation,
@@ -635,10 +817,14 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
     final logos = team.logos;
 
     return TeamModel(
-      id: team.id,
-      name: team.displayName ?? team.name ?? 'Unknown',
+      id: team.id.isEmpty ? raw.id : team.id,
+      name: team.displayName ??
+          team.name ??
+          team.shortDisplayName ??
+          team.abbreviation ??
+          'Unknown',
       shortName: team.shortDisplayName ?? team.abbreviation,
-      logoUrl: logos.isNotEmpty ? logos.first.href : null,
+      logoUrl: (logos.isNotEmpty ? logos.first.href : null) ?? '',
     );
   }
 
@@ -651,20 +837,26 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
 
     final league = rawEvent.league;
     final leagueName = (league?.name ?? '').toLowerCase();
-    
+
     // Check league name for sports
     if (leagueName.contains('nba') || leagueName.contains('basketball')) {
       return 'basketball';
     }
-    if (leagueName.contains('atp') || leagueName.contains('wta') || 
-        leagueName.contains('tennis') || leagueName.contains('us open') ||
-        leagueName.contains('wimbledon') || leagueName.contains('french open') ||
+    if (leagueName.contains('atp') ||
+        leagueName.contains('wta') ||
+        leagueName.contains('tennis') ||
+        leagueName.contains('us open') ||
+        leagueName.contains('wimbledon') ||
+        leagueName.contains('french open') ||
         leagueName.contains('australian open')) {
       return 'tennis';
     }
-    if (leagueName.contains('premier') || leagueName.contains('la liga') || 
-        leagueName.contains('bundesliga') || leagueName.contains('serie a') ||
-        leagueName.contains('ligue') || leagueName.contains('soccer') ||
+    if (leagueName.contains('premier') ||
+        leagueName.contains('la liga') ||
+        leagueName.contains('bundesliga') ||
+        leagueName.contains('serie a') ||
+        leagueName.contains('ligue') ||
+        leagueName.contains('soccer') ||
         leagueName.contains('football')) {
       return 'football';
     }
@@ -674,13 +866,15 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
     }
 
     if (sport != null && sport.isNotEmpty && sport != 'unknown') {
-      if (sport.contains('soccer') || sport.contains('football')) return 'football';
+      if (sport.contains('soccer') || sport.contains('football')) {
+        return 'football';
+      }
       if (sport.contains('basketball')) return 'basketball';
       if (sport.contains('tennis')) return 'tennis';
       if (sport.contains('volleyball')) return 'volleyball';
       return sport;
     }
-    
+
     return 'football';
   }
 
@@ -688,15 +882,6 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
     final normalized = sportId.toLowerCase();
     return normalized == 'soccer' ? 'football' : normalized;
   }
-
-
-}
-
-class _ResultsCacheEntry {
-  const _ResultsCacheEntry({required this.items, required this.fetchedAt});
-
-  final List<MatchModel> items;
-  final DateTime fetchedAt;
 }
 
 class _EspnEndpointPath {

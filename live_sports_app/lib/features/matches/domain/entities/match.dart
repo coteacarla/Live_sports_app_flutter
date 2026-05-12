@@ -1,4 +1,6 @@
 import 'package:equatable/equatable.dart';
+
+import '../../../sports/domain/entities/sport.dart';
 import 'team.dart';
 
 /// All possible lifecycle states of a match.
@@ -37,7 +39,7 @@ class Match extends Equatable {
   const Match({
     required this.id,
     required this.leagueId,
-    required this.sportId,
+    required this.sportType,
     required this.homeTeam,
     required this.awayTeam,
     required this.scheduledAt,
@@ -53,7 +55,9 @@ class Match extends Equatable {
   final String id;
 
   final String leagueId;
-  final String sportId;
+  final SportType sportType;
+
+  String get sportId => sportType.apiValue;
 
   final Team homeTeam;
   final Team awayTeam;
@@ -79,17 +83,59 @@ class Match extends Equatable {
   final String? round;
 
   /// Convenience getter: true while the clock is running.
-  bool get isLive => status == MatchStatus.live || status == MatchStatus.paused;
+  bool get isLive => isLiveStatus(status);
 
   /// Convenience getter: true after the final whistle.
-  bool get isFinished => status == MatchStatus.finished;
+  bool get isFinished => isFinishedStatus(status);
 
   /// Convenience getter: true before kick-off.
-  bool get isScheduled =>
-      status == MatchStatus.scheduled || status == MatchStatus.prematch;
+  bool get isScheduled => isScheduledStatus(status);
 
   /// Returns a display-friendly score string, e.g. "2 - 1" or "- : -".
-  String get scoreDisplay {
+  String get scoreDisplay => scoreDisplayFor(homeScore, awayScore);
+
+  Match copyWith({
+    String? id,
+    String? leagueId,
+    SportType? sportType,
+    Team? homeTeam,
+    Team? awayTeam,
+    DateTime? scheduledAt,
+    MatchStatus? status,
+    Object? homeScore = _unset,
+    Object? awayScore = _unset,
+    Object? elapsed = _unset,
+    Object? venue = _unset,
+    Object? round = _unset,
+  }) {
+    return Match(
+      id: id ?? this.id,
+      leagueId: leagueId ?? this.leagueId,
+      sportType: sportType ?? this.sportType,
+      homeTeam: homeTeam ?? this.homeTeam,
+      awayTeam: awayTeam ?? this.awayTeam,
+      scheduledAt: scheduledAt ?? this.scheduledAt,
+      status: status ?? this.status,
+      homeScore:
+          identical(homeScore, _unset) ? this.homeScore : homeScore as int?,
+      awayScore:
+          identical(awayScore, _unset) ? this.awayScore : awayScore as int?,
+      elapsed: identical(elapsed, _unset) ? this.elapsed : elapsed as int?,
+      venue: identical(venue, _unset) ? this.venue : venue as String?,
+      round: identical(round, _unset) ? this.round : round as String?,
+    );
+  }
+
+  static bool isLiveStatus(MatchStatus status) =>
+      status == MatchStatus.live || status == MatchStatus.paused;
+
+  static bool isFinishedStatus(MatchStatus status) =>
+      status == MatchStatus.finished;
+
+  static bool isScheduledStatus(MatchStatus status) =>
+      status == MatchStatus.scheduled || status == MatchStatus.prematch;
+
+  static String scoreDisplayFor(int? homeScore, int? awayScore) {
     if (homeScore == null || awayScore == null) return '- : -';
     return '$homeScore - $awayScore';
   }
@@ -98,7 +144,7 @@ class Match extends Equatable {
   List<Object?> get props => [
         id,
         leagueId,
-        sportId,
+        sportType,
         homeTeam,
         awayTeam,
         scheduledAt,
@@ -110,3 +156,5 @@ class Match extends Equatable {
         round,
       ];
 }
+
+const Object _unset = Object();

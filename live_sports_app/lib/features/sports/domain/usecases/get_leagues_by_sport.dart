@@ -1,6 +1,5 @@
-import 'package:dartz/dartz.dart';
-
 import '../../../../core/error/failures.dart';
+import '../../../../core/result.dart';
 import '../entities/league.dart';
 import '../repositories/sports_repository.dart';
 
@@ -9,7 +8,7 @@ class GetLeaguesBySport {
 
 	final SportsRepository _repository;
 
-	Future<Either<Failure, List<League>>> call(
+	Future<Result<List<League>, Failure>> call(
 		String sportId, {
 		String? countryCode,
 	}) {

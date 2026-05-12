@@ -26,8 +26,6 @@ final networkInfoProvider = Provider<NetworkInfo>(
 
 final dioClientProvider = Provider<DioClient>((ref) => DioClient());
 
-// ── Sports ────────────────────────────────────────────────────────────────
-
 final sportsRemoteDataSourceProvider = Provider<SportsRemoteDataSource>(
 	(ref) => SportsRemoteDataSourceImpl(dioClient: ref.watch(dioClientProvider)),
 );
@@ -46,8 +44,6 @@ final getSportsUseCaseProvider = Provider<GetSports>(
 final getLeaguesBySportUseCaseProvider = Provider<GetLeaguesBySport>(
 	(ref) => GetLeaguesBySport(ref.watch(sportsRepositoryProvider)),
 );
-
-// ── Matches ───────────────────────────────────────────────────────────────
 
 final matchesRemoteDataSourceProvider = Provider<MatchesRemoteDataSource>(
 	(ref) => MatchesRemoteDataSourceImpl(dioClient: ref.watch(dioClientProvider)),
@@ -76,16 +72,23 @@ final getMatchCommentaryUseCaseProvider = Provider<GetMatchCommentary>(
 	(ref) => GetMatchCommentary(ref.watch(matchesRepositoryProvider)),
 );
 
-// ── Notifications ─────────────────────────────────────────────────────────
-
 final localNotificationServiceProvider = Provider<LocalNotificationService>(
 	(ref) => LocalNotificationService(),
 );
 
 final matchNotificationPreferencesProvider =
-	ChangeNotifierProvider<MatchNotificationPreferences>(
-		(ref) => MatchNotificationPreferences(),
+	NotifierProvider<MatchNotificationPreferences, Set<String>>(
+		MatchNotificationPreferences.new,
 	);
 
-// Toggle to enable/disable instant notifications from the UI.
-final notificationsEnabledProvider = StateProvider<bool>((ref) => true);
+class NotificationsEnabled extends Notifier<bool> {
+	@override
+	bool build() => true;
+
+	void setEnabled(bool value) {
+		state = value;
+	}
+}
+
+final notificationsEnabledProvider =
+	NotifierProvider<NotificationsEnabled, bool>(NotificationsEnabled.new);

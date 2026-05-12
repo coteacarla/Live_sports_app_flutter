@@ -1,8 +1,8 @@
-import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
 
 import '../../../../core/error/failures.dart';
 import '../../../../core/network/network_info.dart';
+import '../../../../core/result.dart';
 import '../../domain/entities/league.dart';
 import '../../domain/entities/sport.dart';
 import '../../domain/repositories/sports_repository.dart';
@@ -18,34 +18,33 @@ class SportsRepositoryImpl implements SportsRepository {
 	final SportsRemoteDataSource _remoteDataSource;
 	final NetworkInfo _networkInfo;
 
-	Future<Either<Failure, T>> _guard<T>(Future<T> Function() run) async {
-		final isConnected = await _networkInfo.isConnected;
-
+	Future<Result<T, Failure>> _guard<T>(Future<T> Function() run) async {
 		try {
 			final result = await run();
-			return Right(result);
+			return ResultSuccess(result);
 		} on DioException catch (error) {
+			final isConnected = await _networkInfo.isConnected;
 			if (!isConnected || error.type == DioExceptionType.connectionError) {
-				return const Left(NetworkFailure());
+				return const ResultFailure(NetworkFailure());
 			}
 			if (error.type == DioExceptionType.connectionTimeout ||
 					error.type == DioExceptionType.receiveTimeout ||
 					error.type == DioExceptionType.sendTimeout) {
-				return const Left(TimeoutFailure());
+				return const ResultFailure(TimeoutFailure());
 			}
-			return Left(
+			return ResultFailure(
 				ServerFailure(
-					message: error.message ?? 'Remote request failed.',
+					message: error.message,
 					statusCode: error.response?.statusCode,
 				),
 			);
 		} catch (_) {
-			return const Left(UnknownFailure(message: 'Unexpected sports error.'));
+			return const ResultFailure(UnknownFailure());
 		}
 	}
 
 	@override
-	Future<Either<Failure, List<Sport>>> getSports() async {
+	Future<Result<List<Sport>, Failure>> getSports() async {
 		return _guard(() async {
 			final sports = await _remoteDataSource.getSports();
 			return sports.map((item) => item.toDomain()).toList(growable: false);
@@ -53,7 +52,7 @@ class SportsRepositoryImpl implements SportsRepository {
 	}
 
 	@override
-	Future<Either<Failure, List<League>>> getLeaguesBySport(
+	Future<Result<List<League>, Failure>> getLeaguesBySport(
 		String sportId, {
 		String? countryCode,
 	}) async {
@@ -67,7 +66,7 @@ class SportsRepositoryImpl implements SportsRepository {
 	}
 
 	@override
-	Future<Either<Failure, League>> getLeagueById(String leagueId) async {
+	Future<Result<League, Failure>> getLeagueById(String leagueId) async {
 		return _guard(() async {
 			final league = await _remoteDataSource.getLeagueById(leagueId);
 			return league.toDomain();
@@ -75,7 +74,7 @@ class SportsRepositoryImpl implements SportsRepository {
 	}
 
 	@override
-	Future<Either<Failure, List<League>>> getFeaturedLeagues() async {
+	Future<Result<List<League>, Failure>> getFeaturedLeagues() async {
 		return _guard(() async {
 			final leagues = await _remoteDataSource.getFeaturedLeagues();
 			return leagues.map((item) => item.toDomain()).toList(growable: false);

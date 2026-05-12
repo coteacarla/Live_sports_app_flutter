@@ -6,44 +6,94 @@ part of 'espn_models.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$EspnScoreboardResponseImpl _$$EspnScoreboardResponseImplFromJson(
-        Map<String, dynamic> json) =>
-    _$EspnScoreboardResponseImpl(
-      events: (json['events'] as List<dynamic>?)
-              ?.map((e) => EspnEvent.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          const [],
-    );
+_EspnScoreboardResponse _$EspnScoreboardResponseFromJson(
+  Map<String, dynamic> json,
+) {
+  // Collect raw event maps from all possible ESPN response shapes:
+  //   1. Standard:          { "events": [...] }
+  //   2. Tennis / golf:     { "sports": [{ "leagues": [{ "events": [...] }] }] }
+  //   3. Top-level leagues: { "leagues": [{ "events": [...] }] }
+  final rawEvents = <dynamic>[];
 
-Map<String, dynamic> _$$EspnScoreboardResponseImplToJson(
-        _$EspnScoreboardResponseImpl instance) =>
-    <String, dynamic>{
-      'events': instance.events,
-    };
+  if (json['events'] is List) {
+    rawEvents.addAll(json['events'] as List);
+  }
 
-_$EspnEventImpl _$$EspnEventImplFromJson(Map<String, dynamic> json) =>
-    _$EspnEventImpl(
-      id: json['id'] as String,
-      date: json['date'] as String,
-      name: json['name'] as String,
-      status: EspnStatus.fromJson(json['status'] as Map<String, dynamic>),
-      competitions: (json['competitions'] as List<dynamic>?)
-              ?.map((e) => EspnCompetition.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          const [],
-      league: json['league'] == null
-          ? null
-          : EspnLeague.fromJson(json['league'] as Map<String, dynamic>),
-      sport: json['sport'] == null
-          ? null
-          : EspnSport.fromJson(json['sport'] as Map<String, dynamic>),
-      links: (json['links'] as List<dynamic>?)
-              ?.map((e) => EspnLink.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          const [],
-    );
+  void collectFromLeagueList(List<dynamic> leagues) {
+    for (final league in leagues) {
+      if (league is! Map) continue;
+      final events = league['events'];
+      if (events is List) rawEvents.addAll(events);
+    }
+  }
 
-Map<String, dynamic> _$$EspnEventImplToJson(_$EspnEventImpl instance) =>
+  if (json['sports'] is List) {
+    for (final sport in json['sports'] as List) {
+      if (sport is! Map) continue;
+      final leagues = sport['leagues'];
+      if (leagues is List) collectFromLeagueList(leagues);
+    }
+  }
+
+  if (json['leagues'] is List) {
+    collectFromLeagueList(json['leagues'] as List);
+  }
+
+  return _EspnScoreboardResponse(
+    events: rawEvents.expand((e) {
+      try {
+        return [EspnEvent.fromJson(e as Map<String, dynamic>)];
+      } catch (_) {
+        return const <EspnEvent>[];
+      }
+    }).toList(),
+  );
+}
+
+Map<String, dynamic> _$EspnScoreboardResponseToJson(
+  _EspnScoreboardResponse instance,
+) => <String, dynamic>{'events': instance.events};
+
+_EspnEvent _$EspnEventFromJson(Map<String, dynamic> json) => _EspnEvent(
+  id: (json['id'] ?? '').toString(),
+  date: (json['date'] ?? '').toString(),
+  name: (json['name'] ?? '').toString(),
+  status: json['status'] is Map
+      ? EspnStatus.fromJson((json['status'] as Map).cast<String, dynamic>())
+      : const EspnStatus(),
+  competitions:
+      (json['competitions'] is List
+              ? json['competitions'] as List<dynamic>
+              : const <dynamic>[])
+          .expand((e) {
+            try {
+              return [EspnCompetition.fromJson(e as Map<String, dynamic>)];
+            } catch (_) {
+              return const <EspnCompetition>[];
+            }
+          })
+          .toList(),
+  league: json['league'] is Map
+      ? EspnLeague.fromJson((json['league'] as Map).cast<String, dynamic>())
+      : null,
+  sport: json['sport'] is Map
+      ? EspnSport.fromJson((json['sport'] as Map).cast<String, dynamic>())
+      : null,
+  links:
+      (json['links'] is List
+              ? json['links'] as List<dynamic>
+              : const <dynamic>[])
+          .expand((e) {
+            try {
+              return [EspnLink.fromJson(e as Map<String, dynamic>)];
+            } catch (_) {
+              return const <EspnLink>[];
+            }
+          })
+          .toList(),
+);
+
+Map<String, dynamic> _$EspnEventToJson(_EspnEvent instance) =>
     <String, dynamic>{
       'id': instance.id,
       'date': instance.date,
@@ -55,24 +105,31 @@ Map<String, dynamic> _$$EspnEventImplToJson(_$EspnEventImpl instance) =>
       'links': instance.links,
     };
 
-_$EspnCompetitionImpl _$$EspnCompetitionImplFromJson(
-        Map<String, dynamic> json) =>
-    _$EspnCompetitionImpl(
-      id: json['id'] as String,
-      competitors: (json['competitors'] as List<dynamic>?)
-              ?.map((e) => EspnCompetitor.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          const [],
-      venue: json['venue'] == null
-          ? null
-          : EspnVenue.fromJson(json['venue'] as Map<String, dynamic>),
-      type: json['type'] == null
-          ? null
-          : EspnCompetitionType.fromJson(json['type'] as Map<String, dynamic>),
+_EspnCompetition _$EspnCompetitionFromJson(Map<String, dynamic> json) =>
+    _EspnCompetition(
+      id: (json['id'] ?? '').toString(),
+      competitors:
+          (json['competitors'] is List
+                  ? json['competitors'] as List<dynamic>
+                  : const <dynamic>[])
+              .expand((e) {
+                try {
+                  return [EspnCompetitor.fromJson(e as Map<String, dynamic>)];
+                } catch (_) {
+                  return const <EspnCompetitor>[];
+                }
+              })
+              .toList(),
+      venue: json['venue'] is Map
+          ? EspnVenue.fromJson((json['venue'] as Map).cast<String, dynamic>())
+          : null,
+      type: json['type'] is Map
+          ? EspnCompetitionType.fromJson(
+              (json['type'] as Map).cast<String, dynamic>())
+          : null,
     );
 
-Map<String, dynamic> _$$EspnCompetitionImplToJson(
-        _$EspnCompetitionImpl instance) =>
+Map<String, dynamic> _$EspnCompetitionToJson(_EspnCompetition instance) =>
     <String, dynamic>{
       'id': instance.id,
       'competitors': instance.competitors,
@@ -80,16 +137,64 @@ Map<String, dynamic> _$$EspnCompetitionImplToJson(
       'type': instance.type,
     };
 
-_$EspnCompetitorImpl _$$EspnCompetitorImplFromJson(Map<String, dynamic> json) =>
-    _$EspnCompetitorImpl(
-      id: json['id'] as String,
-      team: EspnTeam.fromJson(json['team'] as Map<String, dynamic>),
-      homeAway: json['homeAway'] as String?,
-      score: (json['score'] as num?)?.toInt(),
-    );
+_EspnCompetitor _$EspnCompetitorFromJson(Map<String, dynamic> json) {
+  // Build team data by merging from lowest to highest priority:
+  //   1. Competitor's own flat fields  (tennis / golf flat structure)
+  //   2. athlete / athletes nested obj (individual sport nested structure)
+  //   3. team nested obj               (team sport structure)
+  final teamData = <String, dynamic>{};
 
-Map<String, dynamic> _$$EspnCompetitorImplToJson(
-        _$EspnCompetitorImpl instance) =>
+  // 1. Seed with competitor-level display fields (flat individual-sport shape).
+  for (final key in const [
+    'displayName', 'fullName', 'name', 'nickname',
+    'firstName', 'lastName', 'shortDisplayName', 'shortName',
+    'abbreviation', 'logos',
+  ]) {
+    if (json[key] != null) teamData[key] = json[key];
+  }
+
+  // 2. Merge athlete / athletes (overrides flat fields where non-null).
+  Map<String, dynamic>? athlete;
+  if (json['athlete'] is Map) {
+    athlete = (json['athlete'] as Map).cast<String, dynamic>();
+  } else if (json['athletes'] is List) {
+    final list = json['athletes'] as List;
+    if (list.isNotEmpty && list.first is Map) {
+      athlete = (list.first as Map).cast<String, dynamic>();
+    }
+  }
+  if (athlete != null) {
+    athlete.forEach((k, v) { if (v != null) teamData[k] = v; });
+  }
+
+  // 3. Team fields take highest priority (team sports).
+  if (json['team'] is Map) {
+    (json['team'] as Map).cast<String, dynamic>().forEach((k, v) {
+      if (v != null) teamData[k] = v;
+    });
+  }
+
+  teamData['id'] ??= (json['id'] ?? '').toString();
+
+  // DEBUG — remove once tennis names are resolved.
+  if (teamData['displayName'] == null && teamData['name'] == null) {
+    print('[ESPN competitor] id=${json['id']} keys=${json.keys.toList()} '
+        'teamKeys=${teamData.keys.toList()} '
+        'hasTeam=${json['team'] != null} hasAthlete=${json['athlete'] != null} '
+        'hasAthletes=${json['athletes'] != null}');
+  }
+
+  return _EspnCompetitor(
+    id: (json['id'] ?? '').toString(),
+    team: EspnTeam.fromJson(teamData),
+    homeAway: json['homeAway']?.toString(),
+    score: json['score'] is num
+        ? (json['score'] as num).toInt()
+        : int.tryParse((json['score'] ?? '').toString()),
+  );
+}
+
+Map<String, dynamic> _$EspnCompetitorToJson(_EspnCompetitor instance) =>
     <String, dynamic>{
       'id': instance.id,
       'team': instance.team,
@@ -97,115 +202,132 @@ Map<String, dynamic> _$$EspnCompetitorImplToJson(
       'score': instance.score,
     };
 
-_$EspnStatusImpl _$$EspnStatusImplFromJson(Map<String, dynamic> json) =>
-    _$EspnStatusImpl(
-      type: json['type'] == null
-          ? null
-          : EspnStatusType.fromJson(json['type'] as Map<String, dynamic>),
-      displayClock: json['displayClock'] as String?,
-      detail: json['detail'] as String?,
-    );
+_EspnStatus _$EspnStatusFromJson(Map<String, dynamic> json) => _EspnStatus(
+  type: json['type'] is Map
+      ? EspnStatusType.fromJson((json['type'] as Map).cast<String, dynamic>())
+      : null,
+  displayClock: json['displayClock']?.toString(),
+  detail: json['detail']?.toString(),
+);
 
-Map<String, dynamic> _$$EspnStatusImplToJson(_$EspnStatusImpl instance) =>
+Map<String, dynamic> _$EspnStatusToJson(_EspnStatus instance) =>
     <String, dynamic>{
       'type': instance.type,
       'displayClock': instance.displayClock,
       'detail': instance.detail,
     };
 
-_$EspnStatusTypeImpl _$$EspnStatusTypeImplFromJson(Map<String, dynamic> json) =>
-    _$EspnStatusTypeImpl(
-      id: json['id'] as String,
-      name: json['name'] as String?,
-      completed: json['completed'] as bool? ?? false,
+_EspnStatusType _$EspnStatusTypeFromJson(Map<String, dynamic> json) =>
+    _EspnStatusType(
+      id: (json['id'] ?? '').toString(),
+      name: json['name']?.toString(),
+      completed: json['completed'] == true,
     );
 
-Map<String, dynamic> _$$EspnStatusTypeImplToJson(
-        _$EspnStatusTypeImpl instance) =>
+Map<String, dynamic> _$EspnStatusTypeToJson(_EspnStatusType instance) =>
     <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
       'completed': instance.completed,
     };
 
-_$EspnTeamImpl _$$EspnTeamImplFromJson(Map<String, dynamic> json) =>
-    _$EspnTeamImpl(
-      id: json['id'] as String,
-      name: json['name'] as String?,
-      displayName: json['displayName'] as String?,
-      shortDisplayName: json['shortDisplayName'] as String?,
-      abbreviation: json['abbreviation'] as String?,
-      logos: (json['logos'] as List<dynamic>?)
-              ?.map((e) => EspnLogo.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          const [],
-    );
+_EspnTeam _$EspnTeamFromJson(Map<String, dynamic> json) {
+  // Build displayName from multiple possible ESPN/athlete field names.
+  String? displayName;
+  for (final key in const ['displayName', 'fullName']) {
+    if (json[key] != null) { displayName = json[key].toString(); break; }
+  }
+  if (displayName == null) {
+    final first = json['firstName']?.toString();
+    final last = json['lastName']?.toString();
+    if (first != null || last != null) {
+      displayName = '${first ?? ''} ${last ?? ''}'.trim();
+      if (displayName.isEmpty) displayName = null;
+    }
+  }
 
-Map<String, dynamic> _$$EspnTeamImplToJson(_$EspnTeamImpl instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'name': instance.name,
-      'displayName': instance.displayName,
-      'shortDisplayName': instance.shortDisplayName,
-      'abbreviation': instance.abbreviation,
-      'logos': instance.logos,
-    };
+  return _EspnTeam(
+  id: (json['id'] ?? '').toString(),
+  name: (json['name'] ?? json['nickname'])?.toString(),
+  displayName: displayName,
+  shortDisplayName:
+      (json['shortDisplayName'] ?? json['shortName'])?.toString(),
+  abbreviation: json['abbreviation']?.toString(),
+  logos:
+      (json['logos'] as List<dynamic>?)
+          ?.expand((e) {
+            try {
+              return [EspnLogo.fromJson(e as Map<String, dynamic>)];
+            } catch (_) {
+              return const <EspnLogo>[];
+            }
+          })
+          .toList() ??
+      const [],
+  );
+}
 
-_$EspnLogoImpl _$$EspnLogoImplFromJson(Map<String, dynamic> json) =>
-    _$EspnLogoImpl(
-      href: json['href'] as String?,
-      alt: json['alt'] as String?,
-      rel: json['rel'] as String?,
-    );
+Map<String, dynamic> _$EspnTeamToJson(_EspnTeam instance) => <String, dynamic>{
+  'id': instance.id,
+  'name': instance.name,
+  'displayName': instance.displayName,
+  'shortDisplayName': instance.shortDisplayName,
+  'abbreviation': instance.abbreviation,
+  'logos': instance.logos,
+};
 
-Map<String, dynamic> _$$EspnLogoImplToJson(_$EspnLogoImpl instance) =>
-    <String, dynamic>{
-      'href': instance.href,
-      'alt': instance.alt,
-      'rel': instance.rel,
-    };
+_EspnLogo _$EspnLogoFromJson(Map<String, dynamic> json) => _EspnLogo(
+  href: json['href'] as String?,
+  alt: json['alt'] as String?,
+  rel:
+      (json['rel'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+      const [],
+);
 
-_$EspnLeagueImpl _$$EspnLeagueImplFromJson(Map<String, dynamic> json) =>
-    _$EspnLeagueImpl(
-      id: json['id'] as String,
-      name: json['name'] as String?,
-      slug: json['slug'] as String?,
-    );
+Map<String, dynamic> _$EspnLogoToJson(_EspnLogo instance) => <String, dynamic>{
+  'href': instance.href,
+  'alt': instance.alt,
+  'rel': instance.rel,
+};
 
-Map<String, dynamic> _$$EspnLeagueImplToJson(_$EspnLeagueImpl instance) =>
+_EspnLeague _$EspnLeagueFromJson(Map<String, dynamic> json) => _EspnLeague(
+  id: (json['id'] ?? '').toString(),
+  name: json['name']?.toString(),
+  slug: json['slug']?.toString(),
+);
+
+Map<String, dynamic> _$EspnLeagueToJson(_EspnLeague instance) =>
     <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
       'slug': instance.slug,
     };
 
-_$EspnSportImpl _$$EspnSportImplFromJson(Map<String, dynamic> json) =>
-    _$EspnSportImpl(
-      id: json['id'] as String,
-      name: json['name'] as String?,
-      slug: json['slug'] as String?,
-    );
+_EspnSport _$EspnSportFromJson(Map<String, dynamic> json) => _EspnSport(
+  id: (json['id'] ?? '').toString(),
+  name: json['name']?.toString(),
+  slug: json['slug']?.toString(),
+);
 
-Map<String, dynamic> _$$EspnSportImplToJson(_$EspnSportImpl instance) =>
+Map<String, dynamic> _$EspnSportToJson(_EspnSport instance) =>
     <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
       'slug': instance.slug,
     };
 
-_$EspnVenueImpl _$$EspnVenueImplFromJson(Map<String, dynamic> json) =>
-    _$EspnVenueImpl(
-      id: json['id'] as String,
-      fullName: json['fullName'] as String?,
-      shortName: json['shortName'] as String?,
-      address: json['address'] as String?,
-      city: json['city'] as String?,
-      state: json['state'] as String?,
-      zipCode: json['zipCode'] as String?,
-      country: json['country'] as String?,
-    );
+_EspnVenue _$EspnVenueFromJson(Map<String, dynamic> json) => _EspnVenue(
+  id: (json['id'] ?? '').toString(),
+  fullName: json['fullName']?.toString(),
+  shortName: json['shortName']?.toString(),
+  address: json['address']?.toString(),
+  city: json['city']?.toString(),
+  state: json['state']?.toString(),
+  zipCode: json['zipCode']?.toString(),
+  country: json['country']?.toString(),
+);
 
-Map<String, dynamic> _$$EspnVenueImplToJson(_$EspnVenueImpl instance) =>
+Map<String, dynamic> _$EspnVenueToJson(_EspnVenue instance) =>
     <String, dynamic>{
       'id': instance.id,
       'fullName': instance.fullName,
@@ -217,79 +339,91 @@ Map<String, dynamic> _$$EspnVenueImplToJson(_$EspnVenueImpl instance) =>
       'country': instance.country,
     };
 
-_$EspnCompetitionTypeImpl _$$EspnCompetitionTypeImplFromJson(
-        Map<String, dynamic> json) =>
-    _$EspnCompetitionTypeImpl(
-      id: json['id'] as String,
-      name: json['name'] as String?,
-      abbreviation: json['abbreviation'] as String?,
+_EspnCompetitionType _$EspnCompetitionTypeFromJson(Map<String, dynamic> json) =>
+    _EspnCompetitionType(
+      id: (json['id'] ?? '').toString(),
+      name: json['name']?.toString(),
+      abbreviation: json['abbreviation']?.toString(),
     );
 
-Map<String, dynamic> _$$EspnCompetitionTypeImplToJson(
-        _$EspnCompetitionTypeImpl instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'name': instance.name,
-      'abbreviation': instance.abbreviation,
-    };
+Map<String, dynamic> _$EspnCompetitionTypeToJson(
+  _EspnCompetitionType instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'name': instance.name,
+  'abbreviation': instance.abbreviation,
+};
 
-_$EspnLinkImpl _$$EspnLinkImplFromJson(Map<String, dynamic> json) =>
-    _$EspnLinkImpl(
-      href: json['href'] as String?,
-      rel: json['rel'] as String?,
-      text: json['text'] as String?,
-    );
+_EspnLink _$EspnLinkFromJson(Map<String, dynamic> json) => _EspnLink(
+  href: json['href'] as String?,
+  rel: json['rel'] is String ? json['rel'] as String : null,
+  text: json['text'] as String?,
+);
 
-Map<String, dynamic> _$$EspnLinkImplToJson(_$EspnLinkImpl instance) =>
-    <String, dynamic>{
-      'href': instance.href,
-      'rel': instance.rel,
-      'text': instance.text,
-    };
+Map<String, dynamic> _$EspnLinkToJson(_EspnLink instance) => <String, dynamic>{
+  'href': instance.href,
+  'rel': instance.rel,
+  'text': instance.text,
+};
 
-_$EspnSummaryResponseImpl _$$EspnSummaryResponseImplFromJson(
-        Map<String, dynamic> json) =>
-    _$EspnSummaryResponseImpl(
-      article: json['article'] == null
-          ? null
-          : EspnArticle.fromJson(json['article'] as Map<String, dynamic>),
-      commentary: (json['commentary'] as List<dynamic>?)
-              ?.map(
-                  (e) => EspnCommentaryItem.fromJson(e as Map<String, dynamic>))
+_EspnSummaryResponse _$EspnSummaryResponseFromJson(Map<String, dynamic> json) =>
+    _EspnSummaryResponse(
+      article: json['article'] is Map
+          ? EspnArticle.fromJson((json['article'] as Map).cast<String, dynamic>())
+          : null,
+      commentary:
+          (json['commentary'] as List<dynamic>?)
+              ?.expand((e) {
+                try {
+                  return [EspnCommentaryItem.fromJson(e as Map<String, dynamic>)];
+                } catch (_) {
+                  return const <EspnCommentaryItem>[];
+                }
+              })
               .toList() ??
           const [],
     );
 
-Map<String, dynamic> _$$EspnSummaryResponseImplToJson(
-        _$EspnSummaryResponseImpl instance) =>
-    <String, dynamic>{
-      'article': instance.article,
-      'commentary': instance.commentary,
-    };
+Map<String, dynamic> _$EspnSummaryResponseToJson(
+  _EspnSummaryResponse instance,
+) => <String, dynamic>{
+  'article': instance.article,
+  'commentary': instance.commentary,
+};
 
-_$EspnArticleImpl _$$EspnArticleImplFromJson(Map<String, dynamic> json) =>
-    _$EspnArticleImpl(
-      commentary: (json['commentary'] as List<dynamic>?)
-              ?.map(
-                  (e) => EspnCommentaryItem.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          const [],
-      items: (json['items'] as List<dynamic>?)
-              ?.map(
-                  (e) => EspnCommentaryItem.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          const [],
-    );
+_EspnArticle _$EspnArticleFromJson(Map<String, dynamic> json) => _EspnArticle(
+  commentary:
+      (json['commentary'] as List<dynamic>?)
+          ?.expand((e) {
+            try {
+              return [EspnCommentaryItem.fromJson(e as Map<String, dynamic>)];
+            } catch (_) {
+              return const <EspnCommentaryItem>[];
+            }
+          })
+          .toList() ??
+      const [],
+  items:
+      (json['items'] as List<dynamic>?)
+          ?.expand((e) {
+            try {
+              return [EspnCommentaryItem.fromJson(e as Map<String, dynamic>)];
+            } catch (_) {
+              return const <EspnCommentaryItem>[];
+            }
+          })
+          .toList() ??
+      const [],
+);
 
-Map<String, dynamic> _$$EspnArticleImplToJson(_$EspnArticleImpl instance) =>
+Map<String, dynamic> _$EspnArticleToJson(_EspnArticle instance) =>
     <String, dynamic>{
       'commentary': instance.commentary,
       'items': instance.items,
     };
 
-_$EspnCommentaryItemImpl _$$EspnCommentaryItemImplFromJson(
-        Map<String, dynamic> json) =>
-    _$EspnCommentaryItemImpl(
+_EspnCommentaryItem _$EspnCommentaryItemFromJson(Map<String, dynamic> json) =>
+    _EspnCommentaryItem(
       id: json['id'] as String?,
       playId: json['playId'] as String?,
       sequence: (json['sequence'] as num?)?.toInt(),
@@ -310,8 +444,7 @@ _$EspnCommentaryItemImpl _$$EspnCommentaryItemImplFromJson(
       created: json['created'] as String?,
     );
 
-Map<String, dynamic> _$$EspnCommentaryItemImplToJson(
-        _$EspnCommentaryItemImpl instance) =>
+Map<String, dynamic> _$EspnCommentaryItemToJson(_EspnCommentaryItem instance) =>
     <String, dynamic>{
       'id': instance.id,
       'playId': instance.playId,
@@ -331,18 +464,16 @@ Map<String, dynamic> _$$EspnCommentaryItemImplToJson(
       'created': instance.created,
     };
 
-_$EspnTimeImpl _$$EspnTimeImplFromJson(Map<String, dynamic> json) =>
-    _$EspnTimeImpl(
-      displayValue: json['displayValue'] as String?,
-      value: json['value'] as String?,
-      clock: json['clock'] as String?,
-      date: json['date'] as String?,
-    );
+_EspnTime _$EspnTimeFromJson(Map<String, dynamic> json) => _EspnTime(
+  displayValue: json['displayValue'] as String?,
+  value: json['value'] as String?,
+  clock: json['clock'] as String?,
+  date: json['date'] as String?,
+);
 
-Map<String, dynamic> _$$EspnTimeImplToJson(_$EspnTimeImpl instance) =>
-    <String, dynamic>{
-      'displayValue': instance.displayValue,
-      'value': instance.value,
-      'clock': instance.clock,
-      'date': instance.date,
-    };
+Map<String, dynamic> _$EspnTimeToJson(_EspnTime instance) => <String, dynamic>{
+  'displayValue': instance.displayValue,
+  'value': instance.value,
+  'clock': instance.clock,
+  'date': instance.date,
+};

@@ -1,18 +1,16 @@
-import 'package:dartz/dartz.dart';
-
 import '../../../../core/error/failures.dart';
+import '../../../../core/result.dart';
 import '../entities/league.dart';
 import '../entities/sport.dart';
 
 abstract class SportsRepository {
-  
-  Future<Either<Failure, List<Sport>>> getSports();
+  Future<Result<List<Sport>, Failure>> getSports();
 
-  Future<Either<Failure, List<League>>> getLeaguesBySport(
+  Future<Result<List<League>, Failure>> getLeaguesBySport(
     String sportId, {
     String? countryCode,
   });
 
-  Future<Either<Failure, League>> getLeagueById(String leagueId);
-  Future<Either<Failure, List<League>>> getFeaturedLeagues();
+  Future<Result<League, Failure>> getLeagueById(String leagueId);
+  Future<Result<List<League>, Failure>> getFeaturedLeagues();
 }

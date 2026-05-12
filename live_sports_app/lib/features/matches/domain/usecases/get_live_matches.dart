@@ -1,6 +1,5 @@
-import 'package:dartz/dartz.dart';
-
 import '../../../../core/error/failures.dart';
+import '../../../../core/result.dart';
 import '../entities/match.dart';
 import '../repositories/matches_repository.dart';
 
@@ -9,7 +8,7 @@ class GetLiveMatches {
 
 	final MatchesRepository _repository;
 
-	Future<Either<Failure, List<Match>>> call({
+	Future<Result<List<Match>, Failure>> call({
 		String? leagueId,
 		String? sportId,
 	}) {

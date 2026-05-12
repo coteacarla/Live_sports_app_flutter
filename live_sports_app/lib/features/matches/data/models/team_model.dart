@@ -3,9 +3,10 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import '../../domain/entities/team.dart';
 
 part 'team_model.freezed.dart';
+part 'team_model.g.dart';
 
 @freezed
-class TeamModel with _$TeamModel implements Team {
+abstract class TeamModel with _$TeamModel {
   const TeamModel._();
 
   const factory TeamModel({
@@ -16,6 +17,9 @@ class TeamModel with _$TeamModel implements Team {
     String? countryCode,
     String? leagueId,
   }) = _TeamModel;
+
+  factory TeamModel.fromJson(Map<String, dynamic> json) =>
+      _$TeamModelFromJson(json);
 
   factory TeamModel.fromDomain(Team team) => TeamModel(
         id: team.id,
@@ -34,10 +38,4 @@ class TeamModel with _$TeamModel implements Team {
         countryCode: countryCode,
         leagueId: leagueId,
       );
-
-  @override
-  List<Object?> get props => [id, name, shortName, logoUrl, countryCode, leagueId];
-
-  @override
-  bool? get stringify => true;
 }

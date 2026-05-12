@@ -31,9 +31,15 @@ class AsyncStateView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final verticalPadding = (mq.size.height * 0.015).clamp(8.0, 20.0);
+    final titleGap = (mq.size.height * 0.01).clamp(6.0, 14.0);
+    final actionGap = (mq.size.height * 0.012).clamp(8.0, 16.0);
+    final iconSize = (mq.size.width * 0.07).clamp(24.0, 36.0);
+
     if (isLoading) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: EdgeInsets.symmetric(vertical: verticalPadding),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -42,7 +48,7 @@ class AsyncStateView extends StatelessWidget {
               width: 20,
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: titleGap),
             Text(message ?? 'Please wait...'),
           ],
         ),
@@ -50,19 +56,22 @@ class AsyncStateView extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
+      padding: EdgeInsets.symmetric(
+        vertical: verticalPadding,
+        horizontal: (mq.size.width * 0.02).clamp(8.0, 16.0),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 28),
-          const SizedBox(height: 10),
+          Icon(icon, size: iconSize),
+          SizedBox(height: titleGap),
           Text(
             title,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleMedium,
           ),
           if (message != null) ...[
-            const SizedBox(height: 6),
+            SizedBox(height: (titleGap * 0.6).clamp(4.0, 10.0)),
             Text(
               message!,
               textAlign: TextAlign.center,
@@ -70,7 +79,7 @@ class AsyncStateView extends StatelessWidget {
             ),
           ],
           if (onRetry != null) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: actionGap),
             FilledButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh),

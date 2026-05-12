@@ -9,28 +9,24 @@ class NotificationSettingsView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notificationsEnabled = ref.watch(notificationsEnabledProvider);
+    final mq = MediaQuery.of(context);
+    final sectionGap = (mq.size.height * 0.02).clamp(12.0, 20.0);
+    final bodyGap = (mq.size.height * 0.015).clamp(8.0, 16.0);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Notifications')),
-      // 1. Swapped Column for ListView to prevent future screen overflow errors
       body: ListView(
         children: [
-          const SizedBox(height: 16),
-          
-          // 2. SwitchListTile handles its own edge padding natively
+          SizedBox(height: sectionGap),
           SwitchListTile(
             title: const Text('Enable Notifications'),
             subtitle: const Text('Receive instant alerts from live matches'),
             value: notificationsEnabled,
-            // 3. Simplified the onChanged callback to a single line
-            onChanged: (value) => ref.read(notificationsEnabledProvider.notifier).state = value,
+            onChanged: (value) => ref.read(notificationsEnabledProvider.notifier).setEnabled(value),
           ),
-          
-          const SizedBox(height: 16),
-          
-          // 4. We only apply padding to the text section now
+          SizedBox(height: sectionGap),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.symmetric(horizontal: (mq.size.width * 0.04).clamp(16.0, 24.0)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -38,7 +34,7 @@ class NotificationSettingsView extends ConsumerWidget {
                   'How Notifications Work',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: bodyGap),
                 const Text(
                   'Instant notifications are sent when:\n\n'
                   '• A match you\'re watching goes live\n'

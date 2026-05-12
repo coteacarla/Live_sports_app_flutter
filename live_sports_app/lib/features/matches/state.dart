@@ -4,6 +4,7 @@ import 'domain/entities/match.dart';
 import 'domain/entities/match_event.dart';
 import 'domain/entities/commentary.dart';
 import 'domain/entities/team.dart';
+import '../sports/domain/entities/sport.dart';
 
 const Object _unset = Object();
 
@@ -33,8 +34,12 @@ class LiveMatchesState extends Equatable {
     return LiveMatchesState(
       matches: matches ?? this.matches,
       isLoading: isLoading ?? this.isLoading,
-      errorMessage: identical(errorMessage, _unset) ? this.errorMessage : errorMessage as String?,
-      lastUpdated: identical(lastUpdated, _unset) ? this.lastUpdated : lastUpdated as DateTime?,
+      errorMessage: identical(errorMessage, _unset)
+          ? this.errorMessage
+          : errorMessage as String?,
+      lastUpdated: identical(lastUpdated, _unset)
+          ? this.lastUpdated
+          : lastUpdated as DateTime?,
     );
   }
 
@@ -80,7 +85,9 @@ class ResultsState extends Equatable {
       pastErrorMessage: identical(pastErrorMessage, _unset)
           ? this.pastErrorMessage
           : pastErrorMessage as String?,
-      lastUpdated: identical(lastUpdated, _unset) ? this.lastUpdated : lastUpdated as DateTime?,
+      lastUpdated: identical(lastUpdated, _unset)
+          ? this.lastUpdated
+          : lastUpdated as DateTime?,
     );
   }
 
@@ -118,7 +125,7 @@ class MatchDetailState extends Equatable {
         match: Match(
           id: matchId,
           leagueId: '',
-          sportId: 'football',
+          sportType: SportType.football,
           homeTeam: const Team(id: 'unknown_home', name: 'Home Team'),
           awayTeam: const Team(id: 'unknown_away', name: 'Away Team'),
           scheduledAt: DateTime.now().toUtc(),
@@ -142,13 +149,18 @@ class MatchDetailState extends Equatable {
       events: events ?? this.events,
       commentary: commentary ?? this.commentary,
       isLoading: isLoading ?? this.isLoading,
-      errorMessage: identical(errorMessage, _unset) ? this.errorMessage : errorMessage as String?,
-      lastUpdated: identical(lastUpdated, _unset) ? this.lastUpdated : lastUpdated as DateTime?,
+      errorMessage: identical(errorMessage, _unset)
+          ? this.errorMessage
+          : errorMessage as String?,
+      lastUpdated: identical(lastUpdated, _unset)
+          ? this.lastUpdated
+          : lastUpdated as DateTime?,
     );
   }
 
   @override
-  List<Object?> get props => [match, events, commentary, isLoading, errorMessage, lastUpdated];
+  List<Object?> get props =>
+      [match, events, commentary, isLoading, errorMessage, lastUpdated];
 }
 
 /// Arguments container for Match Detail controller
@@ -167,7 +179,9 @@ class MatchDetailArgs extends Equatable {
   }) {
     return MatchDetailArgs(
       matchId: matchId ?? this.matchId,
-      initialMatch: identical(initialMatch, _unset) ? this.initialMatch : initialMatch as Match?,
+      initialMatch: identical(initialMatch, _unset)
+          ? this.initialMatch
+          : initialMatch as Match?,
     );
   }
 

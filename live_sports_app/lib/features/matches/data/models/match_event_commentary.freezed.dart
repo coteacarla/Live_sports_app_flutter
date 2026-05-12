@@ -1,5 +1,5 @@
-// coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
+// coverage:ignore-file
 // ignore_for_file: type=lint
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
@@ -9,528 +9,580 @@ part of 'match_event_commentary.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// dart format off
 T _$identity<T>(T value) => value;
-
-final _privateConstructorUsedError = UnsupportedError(
-    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
 /// @nodoc
 mixin _$MatchEventModel {
-  String get id => throw _privateConstructorUsedError;
-  String get matchId => throw _privateConstructorUsedError;
-  MatchEventType get type => throw _privateConstructorUsedError;
-  int get minute => throw _privateConstructorUsedError;
-  String? get teamId => throw _privateConstructorUsedError;
-  String? get playerId => throw _privateConstructorUsedError;
-  String? get playerName => throw _privateConstructorUsedError;
-  String? get assistPlayerId => throw _privateConstructorUsedError;
-  String? get assistPlayerName => throw _privateConstructorUsedError;
-  int? get extraMinute => throw _privateConstructorUsedError;
-  String? get detail => throw _privateConstructorUsedError;
 
-  @JsonKey(ignore: true)
-  $MatchEventModelCopyWith<MatchEventModel> get copyWith =>
-      throw _privateConstructorUsedError;
+ String get id; String get matchId; MatchEventType get type; int get minute; String? get teamId; String? get playerId; String? get playerName; String? get assistPlayerId; String? get assistPlayerName; int? get extraMinute; String? get detail;
+/// Create a copy of MatchEventModel
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$MatchEventModelCopyWith<MatchEventModel> get copyWith => _$MatchEventModelCopyWithImpl<MatchEventModel>(this as MatchEventModel, _$identity);
+
+  /// Serializes this MatchEventModel to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MatchEventModel&&(identical(other.id, id) || other.id == id)&&(identical(other.matchId, matchId) || other.matchId == matchId)&&(identical(other.type, type) || other.type == type)&&(identical(other.minute, minute) || other.minute == minute)&&(identical(other.teamId, teamId) || other.teamId == teamId)&&(identical(other.playerId, playerId) || other.playerId == playerId)&&(identical(other.playerName, playerName) || other.playerName == playerName)&&(identical(other.assistPlayerId, assistPlayerId) || other.assistPlayerId == assistPlayerId)&&(identical(other.assistPlayerName, assistPlayerName) || other.assistPlayerName == assistPlayerName)&&(identical(other.extraMinute, extraMinute) || other.extraMinute == extraMinute)&&(identical(other.detail, detail) || other.detail == detail));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,matchId,type,minute,teamId,playerId,playerName,assistPlayerId,assistPlayerName,extraMinute,detail);
+
+@override
+String toString() {
+  return 'MatchEventModel(id: $id, matchId: $matchId, type: $type, minute: $minute, teamId: $teamId, playerId: $playerId, playerName: $playerName, assistPlayerId: $assistPlayerId, assistPlayerName: $assistPlayerName, extraMinute: $extraMinute, detail: $detail)';
+}
+
+
 }
 
 /// @nodoc
-abstract class $MatchEventModelCopyWith<$Res> {
-  factory $MatchEventModelCopyWith(
-          MatchEventModel value, $Res Function(MatchEventModel) then) =
-      _$MatchEventModelCopyWithImpl<$Res, MatchEventModel>;
-  @useResult
-  $Res call(
-      {String id,
-      String matchId,
-      MatchEventType type,
-      int minute,
-      String? teamId,
-      String? playerId,
-      String? playerName,
-      String? assistPlayerId,
-      String? assistPlayerName,
-      int? extraMinute,
-      String? detail});
-}
+abstract mixin class $MatchEventModelCopyWith<$Res>  {
+  factory $MatchEventModelCopyWith(MatchEventModel value, $Res Function(MatchEventModel) _then) = _$MatchEventModelCopyWithImpl;
+@useResult
+$Res call({
+ String id, String matchId, MatchEventType type, int minute, String? teamId, String? playerId, String? playerName, String? assistPlayerId, String? assistPlayerName, int? extraMinute, String? detail
+});
 
+
+
+
+}
 /// @nodoc
-class _$MatchEventModelCopyWithImpl<$Res, $Val extends MatchEventModel>
+class _$MatchEventModelCopyWithImpl<$Res>
     implements $MatchEventModelCopyWith<$Res> {
-  _$MatchEventModelCopyWithImpl(this._value, this._then);
+  _$MatchEventModelCopyWithImpl(this._self, this._then);
 
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
+  final MatchEventModel _self;
+  final $Res Function(MatchEventModel) _then;
 
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? id = null,
-    Object? matchId = null,
-    Object? type = null,
-    Object? minute = null,
-    Object? teamId = freezed,
-    Object? playerId = freezed,
-    Object? playerName = freezed,
-    Object? assistPlayerId = freezed,
-    Object? assistPlayerName = freezed,
-    Object? extraMinute = freezed,
-    Object? detail = freezed,
-  }) {
-    return _then(_value.copyWith(
-      id: null == id
-          ? _value.id
-          : id // ignore: cast_nullable_to_non_nullable
-              as String,
-      matchId: null == matchId
-          ? _value.matchId
-          : matchId // ignore: cast_nullable_to_non_nullable
-              as String,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as MatchEventType,
-      minute: null == minute
-          ? _value.minute
-          : minute // ignore: cast_nullable_to_non_nullable
-              as int,
-      teamId: freezed == teamId
-          ? _value.teamId
-          : teamId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      playerId: freezed == playerId
-          ? _value.playerId
-          : playerId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      playerName: freezed == playerName
-          ? _value.playerName
-          : playerName // ignore: cast_nullable_to_non_nullable
-              as String?,
-      assistPlayerId: freezed == assistPlayerId
-          ? _value.assistPlayerId
-          : assistPlayerId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      assistPlayerName: freezed == assistPlayerName
-          ? _value.assistPlayerName
-          : assistPlayerName // ignore: cast_nullable_to_non_nullable
-              as String?,
-      extraMinute: freezed == extraMinute
-          ? _value.extraMinute
-          : extraMinute // ignore: cast_nullable_to_non_nullable
-              as int?,
-      detail: freezed == detail
-          ? _value.detail
-          : detail // ignore: cast_nullable_to_non_nullable
-              as String?,
-    ) as $Val);
-  }
+/// Create a copy of MatchEventModel
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? matchId = null,Object? type = null,Object? minute = null,Object? teamId = freezed,Object? playerId = freezed,Object? playerName = freezed,Object? assistPlayerId = freezed,Object? assistPlayerName = freezed,Object? extraMinute = freezed,Object? detail = freezed,}) {
+  return _then(_self.copyWith(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,matchId: null == matchId ? _self.matchId : matchId // ignore: cast_nullable_to_non_nullable
+as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
+as MatchEventType,minute: null == minute ? _self.minute : minute // ignore: cast_nullable_to_non_nullable
+as int,teamId: freezed == teamId ? _self.teamId : teamId // ignore: cast_nullable_to_non_nullable
+as String?,playerId: freezed == playerId ? _self.playerId : playerId // ignore: cast_nullable_to_non_nullable
+as String?,playerName: freezed == playerName ? _self.playerName : playerName // ignore: cast_nullable_to_non_nullable
+as String?,assistPlayerId: freezed == assistPlayerId ? _self.assistPlayerId : assistPlayerId // ignore: cast_nullable_to_non_nullable
+as String?,assistPlayerName: freezed == assistPlayerName ? _self.assistPlayerName : assistPlayerName // ignore: cast_nullable_to_non_nullable
+as String?,extraMinute: freezed == extraMinute ? _self.extraMinute : extraMinute // ignore: cast_nullable_to_non_nullable
+as int?,detail: freezed == detail ? _self.detail : detail // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [MatchEventModel].
+extension MatchEventModelPatterns on MatchEventModel {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _MatchEventModel value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _MatchEventModel() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _MatchEventModel value)  $default,){
+final _that = this;
+switch (_that) {
+case _MatchEventModel():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _MatchEventModel value)?  $default,){
+final _that = this;
+switch (_that) {
+case _MatchEventModel() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String matchId,  MatchEventType type,  int minute,  String? teamId,  String? playerId,  String? playerName,  String? assistPlayerId,  String? assistPlayerName,  int? extraMinute,  String? detail)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _MatchEventModel() when $default != null:
+return $default(_that.id,_that.matchId,_that.type,_that.minute,_that.teamId,_that.playerId,_that.playerName,_that.assistPlayerId,_that.assistPlayerName,_that.extraMinute,_that.detail);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String matchId,  MatchEventType type,  int minute,  String? teamId,  String? playerId,  String? playerName,  String? assistPlayerId,  String? assistPlayerName,  int? extraMinute,  String? detail)  $default,) {final _that = this;
+switch (_that) {
+case _MatchEventModel():
+return $default(_that.id,_that.matchId,_that.type,_that.minute,_that.teamId,_that.playerId,_that.playerName,_that.assistPlayerId,_that.assistPlayerName,_that.extraMinute,_that.detail);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String matchId,  MatchEventType type,  int minute,  String? teamId,  String? playerId,  String? playerName,  String? assistPlayerId,  String? assistPlayerName,  int? extraMinute,  String? detail)?  $default,) {final _that = this;
+switch (_that) {
+case _MatchEventModel() when $default != null:
+return $default(_that.id,_that.matchId,_that.type,_that.minute,_that.teamId,_that.playerId,_that.playerName,_that.assistPlayerId,_that.assistPlayerName,_that.extraMinute,_that.detail);case _:
+  return null;
+
+}
+}
+
 }
 
 /// @nodoc
-abstract class _$$MatchEventModelImplCopyWith<$Res>
-    implements $MatchEventModelCopyWith<$Res> {
-  factory _$$MatchEventModelImplCopyWith(_$MatchEventModelImpl value,
-          $Res Function(_$MatchEventModelImpl) then) =
-      __$$MatchEventModelImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call(
-      {String id,
-      String matchId,
-      MatchEventType type,
-      int minute,
-      String? teamId,
-      String? playerId,
-      String? playerName,
-      String? assistPlayerId,
-      String? assistPlayerName,
-      int? extraMinute,
-      String? detail});
+@JsonSerializable()
+
+class _MatchEventModel extends MatchEventModel {
+  const _MatchEventModel({required this.id, required this.matchId, required this.type, required this.minute, this.teamId, this.playerId, this.playerName, this.assistPlayerId, this.assistPlayerName, this.extraMinute, this.detail}): super._();
+  factory _MatchEventModel.fromJson(Map<String, dynamic> json) => _$MatchEventModelFromJson(json);
+
+@override final  String id;
+@override final  String matchId;
+@override final  MatchEventType type;
+@override final  int minute;
+@override final  String? teamId;
+@override final  String? playerId;
+@override final  String? playerName;
+@override final  String? assistPlayerId;
+@override final  String? assistPlayerName;
+@override final  int? extraMinute;
+@override final  String? detail;
+
+/// Create a copy of MatchEventModel
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$MatchEventModelCopyWith<_MatchEventModel> get copyWith => __$MatchEventModelCopyWithImpl<_MatchEventModel>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MatchEventModelToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MatchEventModel&&(identical(other.id, id) || other.id == id)&&(identical(other.matchId, matchId) || other.matchId == matchId)&&(identical(other.type, type) || other.type == type)&&(identical(other.minute, minute) || other.minute == minute)&&(identical(other.teamId, teamId) || other.teamId == teamId)&&(identical(other.playerId, playerId) || other.playerId == playerId)&&(identical(other.playerName, playerName) || other.playerName == playerName)&&(identical(other.assistPlayerId, assistPlayerId) || other.assistPlayerId == assistPlayerId)&&(identical(other.assistPlayerName, assistPlayerName) || other.assistPlayerName == assistPlayerName)&&(identical(other.extraMinute, extraMinute) || other.extraMinute == extraMinute)&&(identical(other.detail, detail) || other.detail == detail));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,matchId,type,minute,teamId,playerId,playerName,assistPlayerId,assistPlayerName,extraMinute,detail);
+
+@override
+String toString() {
+  return 'MatchEventModel(id: $id, matchId: $matchId, type: $type, minute: $minute, teamId: $teamId, playerId: $playerId, playerName: $playerName, assistPlayerId: $assistPlayerId, assistPlayerName: $assistPlayerName, extraMinute: $extraMinute, detail: $detail)';
+}
+
+
 }
 
 /// @nodoc
-class __$$MatchEventModelImplCopyWithImpl<$Res>
-    extends _$MatchEventModelCopyWithImpl<$Res, _$MatchEventModelImpl>
-    implements _$$MatchEventModelImplCopyWith<$Res> {
-  __$$MatchEventModelImplCopyWithImpl(
-      _$MatchEventModelImpl _value, $Res Function(_$MatchEventModelImpl) _then)
-      : super(_value, _then);
+abstract mixin class _$MatchEventModelCopyWith<$Res> implements $MatchEventModelCopyWith<$Res> {
+  factory _$MatchEventModelCopyWith(_MatchEventModel value, $Res Function(_MatchEventModel) _then) = __$MatchEventModelCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String matchId, MatchEventType type, int minute, String? teamId, String? playerId, String? playerName, String? assistPlayerId, String? assistPlayerName, int? extraMinute, String? detail
+});
 
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? id = null,
-    Object? matchId = null,
-    Object? type = null,
-    Object? minute = null,
-    Object? teamId = freezed,
-    Object? playerId = freezed,
-    Object? playerName = freezed,
-    Object? assistPlayerId = freezed,
-    Object? assistPlayerName = freezed,
-    Object? extraMinute = freezed,
-    Object? detail = freezed,
-  }) {
-    return _then(_$MatchEventModelImpl(
-      id: null == id
-          ? _value.id
-          : id // ignore: cast_nullable_to_non_nullable
-              as String,
-      matchId: null == matchId
-          ? _value.matchId
-          : matchId // ignore: cast_nullable_to_non_nullable
-              as String,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as MatchEventType,
-      minute: null == minute
-          ? _value.minute
-          : minute // ignore: cast_nullable_to_non_nullable
-              as int,
-      teamId: freezed == teamId
-          ? _value.teamId
-          : teamId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      playerId: freezed == playerId
-          ? _value.playerId
-          : playerId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      playerName: freezed == playerName
-          ? _value.playerName
-          : playerName // ignore: cast_nullable_to_non_nullable
-              as String?,
-      assistPlayerId: freezed == assistPlayerId
-          ? _value.assistPlayerId
-          : assistPlayerId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      assistPlayerName: freezed == assistPlayerName
-          ? _value.assistPlayerName
-          : assistPlayerName // ignore: cast_nullable_to_non_nullable
-              as String?,
-      extraMinute: freezed == extraMinute
-          ? _value.extraMinute
-          : extraMinute // ignore: cast_nullable_to_non_nullable
-              as int?,
-      detail: freezed == detail
-          ? _value.detail
-          : detail // ignore: cast_nullable_to_non_nullable
-              as String?,
-    ));
-  }
+
+
+
 }
-
 /// @nodoc
+class __$MatchEventModelCopyWithImpl<$Res>
+    implements _$MatchEventModelCopyWith<$Res> {
+  __$MatchEventModelCopyWithImpl(this._self, this._then);
 
-class _$MatchEventModelImpl extends _MatchEventModel {
-  const _$MatchEventModelImpl(
-      {required this.id,
-      required this.matchId,
-      required this.type,
-      required this.minute,
-      this.teamId,
-      this.playerId,
-      this.playerName,
-      this.assistPlayerId,
-      this.assistPlayerName,
-      this.extraMinute,
-      this.detail})
-      : super._();
+  final _MatchEventModel _self;
+  final $Res Function(_MatchEventModel) _then;
 
-  @override
-  final String id;
-  @override
-  final String matchId;
-  @override
-  final MatchEventType type;
-  @override
-  final int minute;
-  @override
-  final String? teamId;
-  @override
-  final String? playerId;
-  @override
-  final String? playerName;
-  @override
-  final String? assistPlayerId;
-  @override
-  final String? assistPlayerName;
-  @override
-  final int? extraMinute;
-  @override
-  final String? detail;
-
-  @JsonKey(ignore: true)
-  @override
-  @pragma('vm:prefer-inline')
-  _$$MatchEventModelImplCopyWith<_$MatchEventModelImpl> get copyWith =>
-      __$$MatchEventModelImplCopyWithImpl<_$MatchEventModelImpl>(
-          this, _$identity);
+/// Create a copy of MatchEventModel
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? matchId = null,Object? type = null,Object? minute = null,Object? teamId = freezed,Object? playerId = freezed,Object? playerName = freezed,Object? assistPlayerId = freezed,Object? assistPlayerName = freezed,Object? extraMinute = freezed,Object? detail = freezed,}) {
+  return _then(_MatchEventModel(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,matchId: null == matchId ? _self.matchId : matchId // ignore: cast_nullable_to_non_nullable
+as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
+as MatchEventType,minute: null == minute ? _self.minute : minute // ignore: cast_nullable_to_non_nullable
+as int,teamId: freezed == teamId ? _self.teamId : teamId // ignore: cast_nullable_to_non_nullable
+as String?,playerId: freezed == playerId ? _self.playerId : playerId // ignore: cast_nullable_to_non_nullable
+as String?,playerName: freezed == playerName ? _self.playerName : playerName // ignore: cast_nullable_to_non_nullable
+as String?,assistPlayerId: freezed == assistPlayerId ? _self.assistPlayerId : assistPlayerId // ignore: cast_nullable_to_non_nullable
+as String?,assistPlayerName: freezed == assistPlayerName ? _self.assistPlayerName : assistPlayerName // ignore: cast_nullable_to_non_nullable
+as String?,extraMinute: freezed == extraMinute ? _self.extraMinute : extraMinute // ignore: cast_nullable_to_non_nullable
+as int?,detail: freezed == detail ? _self.detail : detail // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
 }
 
-abstract class _MatchEventModel extends MatchEventModel {
-  const factory _MatchEventModel(
-      {required final String id,
-      required final String matchId,
-      required final MatchEventType type,
-      required final int minute,
-      final String? teamId,
-      final String? playerId,
-      final String? playerName,
-      final String? assistPlayerId,
-      final String? assistPlayerName,
-      final int? extraMinute,
-      final String? detail}) = _$MatchEventModelImpl;
-  const _MatchEventModel._() : super._();
 
-  @override
-  String get id;
-  @override
-  String get matchId;
-  @override
-  MatchEventType get type;
-  @override
-  int get minute;
-  @override
-  String? get teamId;
-  @override
-  String? get playerId;
-  @override
-  String? get playerName;
-  @override
-  String? get assistPlayerId;
-  @override
-  String? get assistPlayerName;
-  @override
-  int? get extraMinute;
-  @override
-  String? get detail;
-  @override
-  @JsonKey(ignore: true)
-  _$$MatchEventModelImplCopyWith<_$MatchEventModelImpl> get copyWith =>
-      throw _privateConstructorUsedError;
 }
+
 
 /// @nodoc
 mixin _$CommentaryModel {
-  String get id => throw _privateConstructorUsedError;
-  String get matchId => throw _privateConstructorUsedError;
-  int get minute => throw _privateConstructorUsedError;
-  String get text => throw _privateConstructorUsedError;
-  bool get isKeyEvent => throw _privateConstructorUsedError;
-  String? get relatedEventId => throw _privateConstructorUsedError;
-  DateTime? get publishedAt => throw _privateConstructorUsedError;
 
-  @JsonKey(ignore: true)
-  $CommentaryModelCopyWith<CommentaryModel> get copyWith =>
-      throw _privateConstructorUsedError;
+ String get id; String get matchId; int get minute; String get text; bool get isKeyEvent; String? get relatedEventId; DateTime? get publishedAt;
+/// Create a copy of CommentaryModel
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CommentaryModelCopyWith<CommentaryModel> get copyWith => _$CommentaryModelCopyWithImpl<CommentaryModel>(this as CommentaryModel, _$identity);
+
+  /// Serializes this CommentaryModel to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CommentaryModel&&(identical(other.id, id) || other.id == id)&&(identical(other.matchId, matchId) || other.matchId == matchId)&&(identical(other.minute, minute) || other.minute == minute)&&(identical(other.text, text) || other.text == text)&&(identical(other.isKeyEvent, isKeyEvent) || other.isKeyEvent == isKeyEvent)&&(identical(other.relatedEventId, relatedEventId) || other.relatedEventId == relatedEventId)&&(identical(other.publishedAt, publishedAt) || other.publishedAt == publishedAt));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,matchId,minute,text,isKeyEvent,relatedEventId,publishedAt);
+
+@override
+String toString() {
+  return 'CommentaryModel(id: $id, matchId: $matchId, minute: $minute, text: $text, isKeyEvent: $isKeyEvent, relatedEventId: $relatedEventId, publishedAt: $publishedAt)';
+}
+
+
 }
 
 /// @nodoc
-abstract class $CommentaryModelCopyWith<$Res> {
-  factory $CommentaryModelCopyWith(
-          CommentaryModel value, $Res Function(CommentaryModel) then) =
-      _$CommentaryModelCopyWithImpl<$Res, CommentaryModel>;
-  @useResult
-  $Res call(
-      {String id,
-      String matchId,
-      int minute,
-      String text,
-      bool isKeyEvent,
-      String? relatedEventId,
-      DateTime? publishedAt});
-}
+abstract mixin class $CommentaryModelCopyWith<$Res>  {
+  factory $CommentaryModelCopyWith(CommentaryModel value, $Res Function(CommentaryModel) _then) = _$CommentaryModelCopyWithImpl;
+@useResult
+$Res call({
+ String id, String matchId, int minute, String text, bool isKeyEvent, String? relatedEventId, DateTime? publishedAt
+});
 
+
+
+
+}
 /// @nodoc
-class _$CommentaryModelCopyWithImpl<$Res, $Val extends CommentaryModel>
+class _$CommentaryModelCopyWithImpl<$Res>
     implements $CommentaryModelCopyWith<$Res> {
-  _$CommentaryModelCopyWithImpl(this._value, this._then);
+  _$CommentaryModelCopyWithImpl(this._self, this._then);
 
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
+  final CommentaryModel _self;
+  final $Res Function(CommentaryModel) _then;
 
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? id = null,
-    Object? matchId = null,
-    Object? minute = null,
-    Object? text = null,
-    Object? isKeyEvent = null,
-    Object? relatedEventId = freezed,
-    Object? publishedAt = freezed,
-  }) {
-    return _then(_value.copyWith(
-      id: null == id
-          ? _value.id
-          : id // ignore: cast_nullable_to_non_nullable
-              as String,
-      matchId: null == matchId
-          ? _value.matchId
-          : matchId // ignore: cast_nullable_to_non_nullable
-              as String,
-      minute: null == minute
-          ? _value.minute
-          : minute // ignore: cast_nullable_to_non_nullable
-              as int,
-      text: null == text
-          ? _value.text
-          : text // ignore: cast_nullable_to_non_nullable
-              as String,
-      isKeyEvent: null == isKeyEvent
-          ? _value.isKeyEvent
-          : isKeyEvent // ignore: cast_nullable_to_non_nullable
-              as bool,
-      relatedEventId: freezed == relatedEventId
-          ? _value.relatedEventId
-          : relatedEventId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      publishedAt: freezed == publishedAt
-          ? _value.publishedAt
-          : publishedAt // ignore: cast_nullable_to_non_nullable
-              as DateTime?,
-    ) as $Val);
-  }
+/// Create a copy of CommentaryModel
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? matchId = null,Object? minute = null,Object? text = null,Object? isKeyEvent = null,Object? relatedEventId = freezed,Object? publishedAt = freezed,}) {
+  return _then(_self.copyWith(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,matchId: null == matchId ? _self.matchId : matchId // ignore: cast_nullable_to_non_nullable
+as String,minute: null == minute ? _self.minute : minute // ignore: cast_nullable_to_non_nullable
+as int,text: null == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
+as String,isKeyEvent: null == isKeyEvent ? _self.isKeyEvent : isKeyEvent // ignore: cast_nullable_to_non_nullable
+as bool,relatedEventId: freezed == relatedEventId ? _self.relatedEventId : relatedEventId // ignore: cast_nullable_to_non_nullable
+as String?,publishedAt: freezed == publishedAt ? _self.publishedAt : publishedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [CommentaryModel].
+extension CommentaryModelPatterns on CommentaryModel {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _CommentaryModel value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _CommentaryModel() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _CommentaryModel value)  $default,){
+final _that = this;
+switch (_that) {
+case _CommentaryModel():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _CommentaryModel value)?  $default,){
+final _that = this;
+switch (_that) {
+case _CommentaryModel() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String matchId,  int minute,  String text,  bool isKeyEvent,  String? relatedEventId,  DateTime? publishedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _CommentaryModel() when $default != null:
+return $default(_that.id,_that.matchId,_that.minute,_that.text,_that.isKeyEvent,_that.relatedEventId,_that.publishedAt);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String matchId,  int minute,  String text,  bool isKeyEvent,  String? relatedEventId,  DateTime? publishedAt)  $default,) {final _that = this;
+switch (_that) {
+case _CommentaryModel():
+return $default(_that.id,_that.matchId,_that.minute,_that.text,_that.isKeyEvent,_that.relatedEventId,_that.publishedAt);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String matchId,  int minute,  String text,  bool isKeyEvent,  String? relatedEventId,  DateTime? publishedAt)?  $default,) {final _that = this;
+switch (_that) {
+case _CommentaryModel() when $default != null:
+return $default(_that.id,_that.matchId,_that.minute,_that.text,_that.isKeyEvent,_that.relatedEventId,_that.publishedAt);case _:
+  return null;
+
+}
+}
+
 }
 
 /// @nodoc
-abstract class _$$CommentaryModelImplCopyWith<$Res>
-    implements $CommentaryModelCopyWith<$Res> {
-  factory _$$CommentaryModelImplCopyWith(_$CommentaryModelImpl value,
-          $Res Function(_$CommentaryModelImpl) then) =
-      __$$CommentaryModelImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call(
-      {String id,
-      String matchId,
-      int minute,
-      String text,
-      bool isKeyEvent,
-      String? relatedEventId,
-      DateTime? publishedAt});
+@JsonSerializable()
+
+class _CommentaryModel extends CommentaryModel {
+  const _CommentaryModel({required this.id, required this.matchId, required this.minute, required this.text, this.isKeyEvent = false, this.relatedEventId, this.publishedAt}): super._();
+  factory _CommentaryModel.fromJson(Map<String, dynamic> json) => _$CommentaryModelFromJson(json);
+
+@override final  String id;
+@override final  String matchId;
+@override final  int minute;
+@override final  String text;
+@override@JsonKey() final  bool isKeyEvent;
+@override final  String? relatedEventId;
+@override final  DateTime? publishedAt;
+
+/// Create a copy of CommentaryModel
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$CommentaryModelCopyWith<_CommentaryModel> get copyWith => __$CommentaryModelCopyWithImpl<_CommentaryModel>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$CommentaryModelToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CommentaryModel&&(identical(other.id, id) || other.id == id)&&(identical(other.matchId, matchId) || other.matchId == matchId)&&(identical(other.minute, minute) || other.minute == minute)&&(identical(other.text, text) || other.text == text)&&(identical(other.isKeyEvent, isKeyEvent) || other.isKeyEvent == isKeyEvent)&&(identical(other.relatedEventId, relatedEventId) || other.relatedEventId == relatedEventId)&&(identical(other.publishedAt, publishedAt) || other.publishedAt == publishedAt));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,matchId,minute,text,isKeyEvent,relatedEventId,publishedAt);
+
+@override
+String toString() {
+  return 'CommentaryModel(id: $id, matchId: $matchId, minute: $minute, text: $text, isKeyEvent: $isKeyEvent, relatedEventId: $relatedEventId, publishedAt: $publishedAt)';
+}
+
+
 }
 
 /// @nodoc
-class __$$CommentaryModelImplCopyWithImpl<$Res>
-    extends _$CommentaryModelCopyWithImpl<$Res, _$CommentaryModelImpl>
-    implements _$$CommentaryModelImplCopyWith<$Res> {
-  __$$CommentaryModelImplCopyWithImpl(
-      _$CommentaryModelImpl _value, $Res Function(_$CommentaryModelImpl) _then)
-      : super(_value, _then);
+abstract mixin class _$CommentaryModelCopyWith<$Res> implements $CommentaryModelCopyWith<$Res> {
+  factory _$CommentaryModelCopyWith(_CommentaryModel value, $Res Function(_CommentaryModel) _then) = __$CommentaryModelCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String matchId, int minute, String text, bool isKeyEvent, String? relatedEventId, DateTime? publishedAt
+});
 
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? id = null,
-    Object? matchId = null,
-    Object? minute = null,
-    Object? text = null,
-    Object? isKeyEvent = null,
-    Object? relatedEventId = freezed,
-    Object? publishedAt = freezed,
-  }) {
-    return _then(_$CommentaryModelImpl(
-      id: null == id
-          ? _value.id
-          : id // ignore: cast_nullable_to_non_nullable
-              as String,
-      matchId: null == matchId
-          ? _value.matchId
-          : matchId // ignore: cast_nullable_to_non_nullable
-              as String,
-      minute: null == minute
-          ? _value.minute
-          : minute // ignore: cast_nullable_to_non_nullable
-              as int,
-      text: null == text
-          ? _value.text
-          : text // ignore: cast_nullable_to_non_nullable
-              as String,
-      isKeyEvent: null == isKeyEvent
-          ? _value.isKeyEvent
-          : isKeyEvent // ignore: cast_nullable_to_non_nullable
-              as bool,
-      relatedEventId: freezed == relatedEventId
-          ? _value.relatedEventId
-          : relatedEventId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      publishedAt: freezed == publishedAt
-          ? _value.publishedAt
-          : publishedAt // ignore: cast_nullable_to_non_nullable
-              as DateTime?,
-    ));
-  }
+
+
+
 }
-
 /// @nodoc
+class __$CommentaryModelCopyWithImpl<$Res>
+    implements _$CommentaryModelCopyWith<$Res> {
+  __$CommentaryModelCopyWithImpl(this._self, this._then);
 
-class _$CommentaryModelImpl extends _CommentaryModel {
-  const _$CommentaryModelImpl(
-      {required this.id,
-      required this.matchId,
-      required this.minute,
-      required this.text,
-      this.isKeyEvent = false,
-      this.relatedEventId,
-      this.publishedAt})
-      : super._();
+  final _CommentaryModel _self;
+  final $Res Function(_CommentaryModel) _then;
 
-  @override
-  final String id;
-  @override
-  final String matchId;
-  @override
-  final int minute;
-  @override
-  final String text;
-  @override
-  @JsonKey()
-  final bool isKeyEvent;
-  @override
-  final String? relatedEventId;
-  @override
-  final DateTime? publishedAt;
-
-  @JsonKey(ignore: true)
-  @override
-  @pragma('vm:prefer-inline')
-  _$$CommentaryModelImplCopyWith<_$CommentaryModelImpl> get copyWith =>
-      __$$CommentaryModelImplCopyWithImpl<_$CommentaryModelImpl>(
-          this, _$identity);
+/// Create a copy of CommentaryModel
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? matchId = null,Object? minute = null,Object? text = null,Object? isKeyEvent = null,Object? relatedEventId = freezed,Object? publishedAt = freezed,}) {
+  return _then(_CommentaryModel(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,matchId: null == matchId ? _self.matchId : matchId // ignore: cast_nullable_to_non_nullable
+as String,minute: null == minute ? _self.minute : minute // ignore: cast_nullable_to_non_nullable
+as int,text: null == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
+as String,isKeyEvent: null == isKeyEvent ? _self.isKeyEvent : isKeyEvent // ignore: cast_nullable_to_non_nullable
+as bool,relatedEventId: freezed == relatedEventId ? _self.relatedEventId : relatedEventId // ignore: cast_nullable_to_non_nullable
+as String?,publishedAt: freezed == publishedAt ? _self.publishedAt : publishedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,
+  ));
 }
 
-abstract class _CommentaryModel extends CommentaryModel {
-  const factory _CommentaryModel(
-      {required final String id,
-      required final String matchId,
-      required final int minute,
-      required final String text,
-      final bool isKeyEvent,
-      final String? relatedEventId,
-      final DateTime? publishedAt}) = _$CommentaryModelImpl;
-  const _CommentaryModel._() : super._();
 
-  @override
-  String get id;
-  @override
-  String get matchId;
-  @override
-  int get minute;
-  @override
-  String get text;
-  @override
-  bool get isKeyEvent;
-  @override
-  String? get relatedEventId;
-  @override
-  DateTime? get publishedAt;
-  @override
-  @JsonKey(ignore: true)
-  _$$CommentaryModelImplCopyWith<_$CommentaryModelImpl> get copyWith =>
-      throw _privateConstructorUsedError;
 }
+
+// dart format on

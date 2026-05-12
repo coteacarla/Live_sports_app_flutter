@@ -31,7 +31,33 @@ class Commentary extends Equatable {
   /// Wall-clock timestamp the entry was published.
   final DateTime? publishedAt;
 
+  Commentary copyWith({
+    String? id,
+    String? matchId,
+    int? minute,
+    String? text,
+    bool? isKeyEvent,
+    Object? relatedEventId = _unset,
+    Object? publishedAt = _unset,
+  }) {
+    return Commentary(
+      id: id ?? this.id,
+      matchId: matchId ?? this.matchId,
+      minute: minute ?? this.minute,
+      text: text ?? this.text,
+      isKeyEvent: isKeyEvent ?? this.isKeyEvent,
+      relatedEventId: identical(relatedEventId, _unset)
+          ? this.relatedEventId
+          : relatedEventId as String?,
+      publishedAt: identical(publishedAt, _unset)
+          ? this.publishedAt
+          : publishedAt as DateTime?,
+    );
+  }
+
   @override
   List<Object?> get props =>
       [id, matchId, minute, text, isKeyEvent, relatedEventId, publishedAt];
 }
+
+const Object _unset = Object();

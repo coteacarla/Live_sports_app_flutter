@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 
 import '../constants/api_constants.dart';
@@ -8,6 +9,7 @@ class DioClient {
           Dio(
             BaseOptions(
               baseUrl: ApiConstants.baseUrl,
+              headers: const {'Accept': 'application/json'},
               connectTimeout:
                   const Duration(seconds: ApiConstants.requestTimeoutSeconds),
               receiveTimeout:
@@ -18,10 +20,21 @@ class DioClient {
             ),
           ) {
     if (addDefaultInterceptors) {
+      if (kDebugMode) {
+        _dio.interceptors.add(
+          LogInterceptor(
+            request: true,
+            requestHeader: true,
+            requestBody: true,
+            responseHeader: true,
+            responseBody: true,
+            error: true,
+          ),
+        );
+      }
       _dio.interceptors.add(
         InterceptorsWrapper(
           onRequest: (options, handler) {
-            options.headers.putIfAbsent('Accept', () => 'application/json');
             handler.next(options);
           },
         ),

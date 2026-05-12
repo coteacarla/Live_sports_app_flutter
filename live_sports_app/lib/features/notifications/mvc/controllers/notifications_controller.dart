@@ -1,8 +1,4 @@
-import 'dart:async';
-
-import 'package:flutter/foundation.dart';
-
-class NotificationsController extends ChangeNotifier {
+class NotificationsController {
   // Simplified to just handle instant notifications.
   // Start/end/commentary notifications are sent directly from polling controllers.
 
@@ -14,6 +10,5 @@ class NotificationsController extends ChangeNotifier {
     // This method is kept for potential UI-triggered notifications.
     return Future.value();
   }
-
 }
 
