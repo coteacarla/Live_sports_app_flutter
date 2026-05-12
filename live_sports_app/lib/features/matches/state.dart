@@ -1,7 +1,6 @@
 import 'package:equatable/equatable.dart';
 
 import 'domain/entities/match.dart';
-import 'domain/entities/match_event.dart';
 import 'domain/entities/commentary.dart';
 import 'domain/entities/team.dart';
 import '../sports/domain/entities/sport.dart';
@@ -21,8 +20,6 @@ class LiveMatchesState extends Equatable {
   final bool isLoading;
   final String? errorMessage;
   final DateTime? lastUpdated;
-
-  /// Initial state with loading flag set
   factory LiveMatchesState.initial() => const LiveMatchesState();
 
   LiveMatchesState copyWith({
@@ -106,7 +103,6 @@ class ResultsState extends Equatable {
 class MatchDetailState extends Equatable {
   const MatchDetailState({
     required this.match,
-    this.events = const [],
     this.commentary = const [],
     this.isLoading = false,
     this.errorMessage,
@@ -114,7 +110,6 @@ class MatchDetailState extends Equatable {
   });
 
   final Match match;
-  final List<MatchEvent> events;
   final List<Commentary> commentary;
   final bool isLoading;
   final String? errorMessage;
@@ -131,14 +126,12 @@ class MatchDetailState extends Equatable {
           scheduledAt: DateTime.now().toUtc(),
           status: MatchStatus.unknown,
         ),
-        events: const [],
         commentary: const [],
         isLoading: true,
       );
 
   MatchDetailState copyWith({
     Match? match,
-    List<MatchEvent>? events,
     List<Commentary>? commentary,
     bool? isLoading,
     Object? errorMessage = _unset,
@@ -146,7 +139,6 @@ class MatchDetailState extends Equatable {
   }) {
     return MatchDetailState(
       match: match ?? this.match,
-      events: events ?? this.events,
       commentary: commentary ?? this.commentary,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: identical(errorMessage, _unset)
@@ -160,7 +152,7 @@ class MatchDetailState extends Equatable {
 
   @override
   List<Object?> get props =>
-      [match, events, commentary, isLoading, errorMessage, lastUpdated];
+      [match, commentary, isLoading, errorMessage, lastUpdated];
 }
 
 /// Arguments container for Match Detail controller

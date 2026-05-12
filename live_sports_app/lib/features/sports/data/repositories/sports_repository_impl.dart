@@ -65,19 +65,4 @@ class SportsRepositoryImpl implements SportsRepository {
 		});
 	}
 
-	@override
-	Future<Result<League, Failure>> getLeagueById(String leagueId) async {
-		return _guard(() async {
-			final league = await _remoteDataSource.getLeagueById(leagueId);
-			return league.toDomain();
-		});
-	}
-
-	@override
-	Future<Result<List<League>, Failure>> getFeaturedLeagues() async {
-		return _guard(() async {
-			final leagues = await _remoteDataSource.getFeaturedLeagues();
-			return leagues.map((item) => item.toDomain()).toList(growable: false);
-		});
-	}
 }

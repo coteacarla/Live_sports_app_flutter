@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:riverpod/riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:flutter/foundation.dart';
 import '../../injection/providers.dart';
 import '../matches/providers.dart';
 import 'data/datasources/sports_remote_datasource.dart';
@@ -80,9 +79,6 @@ class Sports extends _$Sports {
     }
 
     final sportsResult = await ref.read(getSportsUseCaseProvider)();
-    sportsResult.fold(
-    (items) => debugPrint('✅ Successfully fetched ${items.length} sports'), // LOG 2
-    (failure) => debugPrint('❌ Sport Fetch Failed: ${failure.message}'),); // LOG 3);
     if (buildVersion != _buildVersion) {
       _isFetching = false;
       return;

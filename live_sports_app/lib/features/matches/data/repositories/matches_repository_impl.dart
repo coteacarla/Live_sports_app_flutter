@@ -6,7 +6,6 @@ import '../../../../core/result.dart';
 import '../datasources/matches_remote_datasource.dart';
 import '../../domain/entities/commentary.dart';
 import '../../domain/entities/match.dart';
-import '../../domain/entities/match_event.dart';
 import '../../domain/repositories/matches_repository.dart';
 
 class MatchesRepositoryImpl implements MatchesRepository {
@@ -105,24 +104,8 @@ class MatchesRepositoryImpl implements MatchesRepository {
   }
 
   @override
-  Future<Result<List<Match>, Failure>> getMatchesByDate(DateTime date) {
-    return _guard(() async {
-      final items = await _remoteDataSource.getMatchesByDate(date);
-      return _mapSafe(items, (item) => item.toDomain());
-    });
-  }
-
-  @override
   Future<Result<Match, Failure>> getMatchById(String matchId) {
     return _guard(() async => (await _remoteDataSource.getMatchById(matchId)).toDomain());
-  }
-
-  @override
-  Future<Result<List<MatchEvent>, Failure>> getMatchEvents(String matchId) {
-    return _guard(() async {
-      final items = await _remoteDataSource.getMatchEvents(matchId);
-      return items.map((item) => item.toDomain()).toList(growable: false);
-    });
   }
 
   @override

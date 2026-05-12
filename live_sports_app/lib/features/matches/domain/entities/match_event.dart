@@ -1,6 +1,5 @@
 import 'package:equatable/equatable.dart';
 
-/// The type of notable incident that occurred during the match.
 enum MatchEventType {
   goal,
   ownGoal,
@@ -19,7 +18,6 @@ enum MatchEventType {
   other,
 }
 
-/// A discrete, notable incident during a match (goal, card, substitution, etc.).
 class MatchEvent extends Equatable {
   const MatchEvent({
     required this.id,
@@ -47,50 +45,6 @@ class MatchEvent extends Equatable {
   final int? extraMinute;
   final String? detail;
 
-  MatchEvent copyWith({
-    String? id,
-    String? matchId,
-    MatchEventType? type,
-    int? minute,
-    Object? teamId = _unset,
-    Object? playerId = _unset,
-    Object? playerName = _unset,
-    Object? assistPlayerId = _unset,
-    Object? assistPlayerName = _unset,
-    Object? extraMinute = _unset,
-    Object? detail = _unset,
-  }) {
-    return MatchEvent(
-      id: id ?? this.id,
-      matchId: matchId ?? this.matchId,
-      type: type ?? this.type,
-      minute: minute ?? this.minute,
-      teamId: identical(teamId, _unset) ? this.teamId : teamId as String?,
-      playerId:
-          identical(playerId, _unset) ? this.playerId : playerId as String?,
-      playerName: identical(playerName, _unset)
-          ? this.playerName
-          : playerName as String?,
-      assistPlayerId: identical(assistPlayerId, _unset)
-          ? this.assistPlayerId
-          : assistPlayerId as String?,
-      assistPlayerName: identical(assistPlayerName, _unset)
-          ? this.assistPlayerName
-          : assistPlayerName as String?,
-      extraMinute: identical(extraMinute, _unset)
-          ? this.extraMinute
-          : extraMinute as int?,
-      detail: identical(detail, _unset) ? this.detail : detail as String?,
-    );
-  }
-
-  /// Human-readable minute label, e.g. "45+2'" or "67'".
-  String get minuteLabel {
-    final base = "$minute'";
-    if (extraMinute != null && extraMinute! > 0) return "$minute+$extraMinute'";
-    return base;
-  }
-
   @override
   List<Object?> get props => [
         id,
@@ -106,5 +60,3 @@ class MatchEvent extends Equatable {
         detail,
       ];
 }
-
-const Object _unset = Object();

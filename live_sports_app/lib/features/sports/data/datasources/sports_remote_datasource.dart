@@ -1,6 +1,3 @@
-import 'package:dio/dio.dart';
-
-import '../../../../core/constants/api_constants.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../domain/entities/league.dart';
 import '../../domain/entities/sport.dart';
@@ -13,8 +10,6 @@ abstract class SportsRemoteDataSource {
     String sportId, {
     String? countryCode,
   });
-  Future<LeagueModel> getLeagueById(String leagueId);
-  Future<List<LeagueModel>> getFeaturedLeagues();
 }
 
 class SportsRemoteDataSourceImpl implements SportsRemoteDataSource {
@@ -310,47 +305,6 @@ class SportsRemoteDataSourceImpl implements SportsRemoteDataSource {
       if (countryCode == null || countryCode.isEmpty) return true;
       return (league.country ?? '').toUpperCase() == countryCode.toUpperCase();
     }).toList(growable: false);
-  }
-
-  @override
-  Future<LeagueModel> getLeagueById(String leagueId) async {
-    final response = await _dio.instance.get<Map<String, dynamic>>(
-      '/lookupleague.php',
-      queryParameters: {'id': leagueId},
-    );
-
-    final leagues =
-        (response.data?['leagues'] as List<dynamic>? ?? const <dynamic>[])
-            .whereType<Map<String, dynamic>>()
-            .toList(growable: false);
-    if (leagues.isEmpty) {
-      throw DioException(
-        requestOptions: response.requestOptions,
-        response: response,
-        message: 'League not found',
-      );
-    }
-
-    final raw = leagues.first;
-    var league = LeagueModel.fromJson(raw);
-    // Apply default season if not provided by API
-    if (league.currentSeason == null || league.currentSeason!.isEmpty) {
-      final defaultSeason = _defaultCurrentSeasons[league.name];
-      if (defaultSeason != null) {
-        league = league.copyWith(currentSeason: defaultSeason) as LeagueModel;
-      }
-    }
-    return league;
-  }
-
-  @override
-  Future<List<LeagueModel>> getFeaturedLeagues() async {
-    final allIds = ApiConstants.featuredLeagueIdsBySport.values
-        .expand((ids) => ids)
-        .toSet()
-        .toList(growable: false);
-    final leagues = await Future.wait(allIds.map(getLeagueById));
-    return _applyDefaultSeasons(leagues);
   }
 
   Future<String> _resolveSportName(String sportId) async {

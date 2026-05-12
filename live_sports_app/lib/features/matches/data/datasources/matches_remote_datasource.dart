@@ -22,9 +22,7 @@ abstract class MatchesRemoteDataSource {
     required PaginationParams pagination,
     MatchFilters filters,
   });
-  Future<List<MatchModel>> getMatchesByDate(DateTime date);
   Future<MatchModel> getMatchById(String matchId);
-  Future<List<MatchEventModel>> getMatchEvents(String matchId);
   Future<List<CommentaryModel>> getMatchCommentary(String matchId,
       {int? since, String? sportId});
 }
@@ -221,51 +219,6 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
   }
 
   @override
-  Future<List<MatchModel>> getMatchesByDate(DateTime date) async {
-    final target =
-        DateTime.utc(date.toUtc().year, date.toUtc().month, date.toUtc().day);
-    final all = await _collectEspnMatches(
-      fromOffsetDays: 0,
-      toOffsetDays: 0,
-      baseDate: target,
-    );
-    var results = all
-        .where((match) => _isSameUtcDay(match.scheduledAt, target))
-        .toList(growable: false);
-
-    // If no matches were found for the exact date, search a nearby window and
-    // return matches from the nearest non-empty day. This provides useful
-    // fallback content instead of an empty list when APIs report nearby days.
-    if (results.isEmpty) {
-      final expanded = await _collectEspnMatches(
-        fromOffsetDays: -3,
-        toOffsetDays: 3,
-        baseDate: target,
-      );
-      if (expanded.isNotEmpty) {
-        // Group by UTC day and pick the group whose day is closest to target.
-        final groups = <DateTime, List<MatchModel>>{};
-        for (final m in expanded) {
-          final day = DateTime.utc(m.scheduledAt.year, m.scheduledAt.month, m.scheduledAt.day);
-          groups.putIfAbsent(day, () => []).add(m);
-        }
-        DateTime? bestDay;
-        var bestDistance = double.infinity;
-        for (final day in groups.keys) {
-          final dist = (day.difference(target).inDays).abs().toDouble();
-          if (dist < bestDistance) {
-            bestDistance = dist;
-            bestDay = day;
-          }
-        }
-        if (bestDay != null) results = groups[bestDay]!.toList(growable: false);
-      }
-    }
-
-    return results;
-  }
-
-  @override
   Future<MatchModel> getMatchById(String matchId) async {
     if (_matchCache.containsKey(matchId)) return _matchCache[matchId]!;
 
@@ -290,12 +243,6 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
 
     throw StateError(
         'Non-ESPN matches are not supported. Use ESPN match IDs (espn_*)');
-  }
-
-  @override
-  Future<List<MatchEventModel>> getMatchEvents(String matchId) async {
-    // ESPN matches don't expose timeline events, only commentary
-    return const <MatchEventModel>[];
   }
 
   @override
@@ -869,14 +816,6 @@ class MatchesRemoteDataSourceImpl implements MatchesRemoteDataSource {
     final month = utc.month.toString().padLeft(2, '0');
     final day = utc.day.toString().padLeft(2, '0');
     return '${utc.year}$month$day';
-  }
-
-  static bool _isSameUtcDay(DateTime a, DateTime b) {
-    final left = a.toUtc();
-    final right = b.toUtc();
-    return left.year == right.year &&
-        left.month == right.month &&
-        left.day == right.day;
   }
 
   static int? _parseEspnElapsed(String? raw) {

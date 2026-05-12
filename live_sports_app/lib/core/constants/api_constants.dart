@@ -69,24 +69,4 @@ class ApiConstants {
     'NCAA Men\'s Hockey':           'hockey/mens-college-hockey',
     'NCAA Women\'s Hockey':         'hockey/womens-college-hockey',
   };
-
-  // TheSportsDB league IDs used for schedule/results fallback.
-  static const featuredLeagueIdsBySport = <String, List<String>>{
-    'football': [
-      '4328', // EPL
-      '4335', // La Liga
-      '4331', // Bundesliga
-      '4346', // MLS
-    ],
-    'basketball': [
-      '4387', // NBA
-      '4389', // WNBA
-      '4391', // NCAA Men's
-      '4394', // EuroLeague
-    ],
-    'volleyball': [],
-    'hockey': [
-      '4380', // NHL
-    ],
-  };
 }

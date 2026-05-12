@@ -7,7 +7,6 @@ import 'app.dart';
 import 'core/notifications/local_notification_service.dart';
 import 'core/storage/hive_service.dart';
 
-/// Runs in a separate isolate — must be a top-level function.
 @pragma('vm:entry-point')
 Future<void> _fcmBackgroundHandler(RemoteMessage message) async {
   debugPrint('[FCM] Background message: ${message.notification?.title}');

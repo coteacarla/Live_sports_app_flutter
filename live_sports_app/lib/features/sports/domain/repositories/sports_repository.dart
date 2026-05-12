@@ -11,6 +11,4 @@ abstract class SportsRepository {
     String? countryCode,
   });
 
-  Future<Result<League, Failure>> getLeagueById(String leagueId);
-  Future<Result<List<League>, Failure>> getFeaturedLeagues();
 }

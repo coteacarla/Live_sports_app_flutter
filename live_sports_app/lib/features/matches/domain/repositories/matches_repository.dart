@@ -2,7 +2,6 @@ import '../../../../core/error/failures.dart';
 import '../../../../core/result.dart';
 import '../entities/commentary.dart';
 import '../entities/match.dart';
-import '../entities/match_event.dart';
 
 /// Pagination parameters shared across paginated endpoints.
 class PaginationParams {
@@ -62,18 +61,9 @@ abstract class MatchesRepository {
 		MatchFilters filters = const MatchFilters(),
 	});
 
-	/// Fetches fixtures for a specific calendar date (UTC).
-	  Future<Result<List<Match>, Failure>> getMatchesByDate(DateTime date);
-
 	// ── Single match ──────────────────────────────────────────────────────────
 
-	/// Fetches full detail for a single match, including current score and status.
 	Future<Result<Match, Failure>> getMatchById(String matchId);
-
-	// ── Timeline / events ─────────────────────────────────────────────────────
-
-	/// Fetches all notable incidents (goals, cards, substitutions) for [matchId].
-	Future<Result<List<MatchEvent>, Failure>> getMatchEvents(String matchId);
 
 	// ── Commentary ────────────────────────────────────────────────────────────
 
