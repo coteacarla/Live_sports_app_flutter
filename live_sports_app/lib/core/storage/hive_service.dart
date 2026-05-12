@@ -12,4 +12,10 @@ class HiveService {
 				? Future.value(Hive.box<Map>(name))
 				: Hive.openBox<Map>(name);
 	}
+
+	static Future<Box<dynamic>> openBox(String name) {
+		return Hive.isBoxOpen(name)
+				? Future.value(Hive.box<dynamic>(name))
+				: Hive.openBox<dynamic>(name);
+	}
 }

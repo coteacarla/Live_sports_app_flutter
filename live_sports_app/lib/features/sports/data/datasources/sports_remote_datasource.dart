@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/network/dio_client.dart';
+import '../../domain/entities/league.dart';
 import '../../domain/entities/sport.dart';
 import '../models/league_model.dart';
 import '../models/sport_model.dart';
@@ -37,6 +38,126 @@ class SportsRemoteDataSourceImpl implements SportsRemoteDataSource {
     'baseball': 'Baseball',
     'american-football': 'American Football',
     'american football': 'American Football',
+  };
+
+  // Default current seasons for major leagues (in case API doesn't provide them)
+  static const Map<String, String> _defaultCurrentSeasons = {
+    // Football
+    'Premier League': '2025-2026',
+    'La Liga': '2025-2026',
+    'Serie A': '2025-2026',
+    'Bundesliga': '2025-2026',
+    'Ligue 1': '2025-2026',
+    'Championship': '2025-2026',
+    'Scottish Premier League': '2025-2026',
+    'Scottish Championship': '2025-2026',
+    'Eredivisie': '2025-2026',
+    'Primeira Liga': '2025-2026',
+    'Super Lig': '2025-2026',
+    'Serie A TIM': '2025-2026',
+    'Liga Portugal Bwin': '2025-2026',
+    'Süper Lig': '2025-2026',
+    // Basketball
+    'NBA': '2024-2025',
+    'WNBA': '2025',
+    "NCAA Men's Basketball": '2024-2025',
+    "NCAA Women's Basketball": '2024-2025',
+    // Tennis
+    'ATP Tour': '2025',
+    'WTA Tour': '2025',
+    // Volleyball
+    "FIVB Women's Nations League": '2025',
+    "FIVB Men's Nations League": '2025',
+    "NCAA Women's Volleyball": '2024-2025',
+    "NCAA Men's Volleyball": '2024-2025',
+  };
+
+  // Static league definitions guaranteed to appear for every sport,
+  // regardless of what TheSportsDB returns (names may differ per region).
+  static const Map<String, List<LeagueModel>> _staticLeaguesBySport = {
+    'football': [
+      LeagueModel(
+        id: 's_epl', name: 'Premier League',
+        sportType: SportType.football, type: LeagueType.domestic,
+        country: 'England', currentSeason: '2025-2026',
+      ),
+      LeagueModel(
+        id: 's_laliga', name: 'La Liga',
+        sportType: SportType.football, type: LeagueType.domestic,
+        country: 'Spain', currentSeason: '2025-2026',
+      ),
+      LeagueModel(
+        id: 's_bundesliga', name: 'Bundesliga',
+        sportType: SportType.football, type: LeagueType.domestic,
+        country: 'Germany', currentSeason: '2025-2026',
+      ),
+      LeagueModel(
+        id: 's_seriea', name: 'Serie A',
+        sportType: SportType.football, type: LeagueType.domestic,
+        country: 'Italy', currentSeason: '2025-2026',
+      ),
+      LeagueModel(
+        id: 's_ligue1', name: 'Ligue 1',
+        sportType: SportType.football, type: LeagueType.domestic,
+        country: 'France', currentSeason: '2025-2026',
+      ),
+    ],
+    'basketball': [
+      LeagueModel(
+        id: 's_nba', name: 'NBA',
+        sportType: SportType.basketball, type: LeagueType.domestic,
+        country: 'United States', currentSeason: '2024-2025',
+      ),
+      LeagueModel(
+        id: 's_wnba', name: 'WNBA',
+        sportType: SportType.basketball, type: LeagueType.domestic,
+        country: 'United States', currentSeason: '2025',
+      ),
+      LeagueModel(
+        id: 's_ncaa_mb', name: "NCAA Men's Basketball",
+        sportType: SportType.basketball, type: LeagueType.domestic,
+        country: 'United States', currentSeason: '2024-2025',
+      ),
+      LeagueModel(
+        id: 's_ncaa_wb', name: "NCAA Women's Basketball",
+        sportType: SportType.basketball, type: LeagueType.domestic,
+        country: 'United States', currentSeason: '2024-2025',
+      ),
+    ],
+    'tennis': [
+      LeagueModel(
+        id: 's_atp', name: 'ATP Tour',
+        sportType: SportType.tennis, type: LeagueType.international,
+        currentSeason: '2025',
+      ),
+      LeagueModel(
+        id: 's_wta', name: 'WTA Tour',
+        sportType: SportType.tennis, type: LeagueType.international,
+        currentSeason: '2025',
+      ),
+    ],
+    'volleyball': [
+      LeagueModel(
+        id: 's_fivb_w', name: "FIVB Women's Nations League",
+        sportType: SportType.volleyball, type: LeagueType.international,
+        currentSeason: '2025',
+      ),
+      LeagueModel(
+        id: 's_fivb_m', name: "FIVB Men's Nations League",
+        sportType: SportType.volleyball, type: LeagueType.international,
+        currentSeason: '2025',
+      ),
+      LeagueModel(
+        id: 's_ncaa_wv', name: "NCAA Women's Volleyball",
+        sportType: SportType.volleyball, type: LeagueType.domestic,
+        country: 'United States', currentSeason: '2024-2025',
+      ),
+      LeagueModel(
+        id: 's_ncaa_mv', name: "NCAA Men's Volleyball",
+        sportType: SportType.volleyball, type: LeagueType.domestic,
+        country: 'United States', currentSeason: '2024-2025',
+      ),
+    ],
   };
 
   @override
@@ -111,15 +232,33 @@ class SportsRemoteDataSourceImpl implements SportsRemoteDataSource {
   }) async {
     final canonicalSportId = _canonicalSlug(sportId.toLowerCase());
 
-    final leagues = canonicalSportId == 'football'
-        ? await _getFootballLeaguesFastPath(canonicalSportId)
-        : await _getLeaguesBySportSearch(canonicalSportId);
-    if (leagues.isNotEmpty) {
-      return _applyCountryFilter(leagues, countryCode: countryCode);
-    }
+    // All sports: always include static leagues as guaranteed chips, then
+    // enrich with whatever the API returns (deduplicated by name).
+    final staticLeagues =
+        _staticLeaguesBySport[canonicalSportId] ?? const <LeagueModel>[];
+    List<LeagueModel> apiLeagues = const [];
+    try {
+      apiLeagues = canonicalSportId == 'football'
+          ? await _getFootballLeaguesFastPath(canonicalSportId)
+          : await _getLeaguesBySportSearch(canonicalSportId);
+    } catch (_) {}
 
-    final fallbackLeagues = await _getFeaturedLeaguesForSport(canonicalSportId);
-    return _applyCountryFilter(fallbackLeagues, countryCode: countryCode);
+    final merged = _mergeWithStatic(
+      staticLeagues: staticLeagues,
+      apiLeagues: apiLeagues,
+    );
+    return _applyCountryFilter(merged, countryCode: countryCode);
+  }
+
+  List<LeagueModel> _mergeWithStatic({
+    required List<LeagueModel> staticLeagues,
+    required List<LeagueModel> apiLeagues,
+  }) {
+    final staticNames = staticLeagues.map((l) => l.name).toSet();
+    final extras = apiLeagues
+        .where((l) => !staticNames.contains(l.name))
+        .toList(growable: false);
+    return [...staticLeagues, ...extras];
   }
 
   Future<List<LeagueModel>> _getFootballLeaguesFastPath(String sportId) async {
@@ -136,7 +275,7 @@ class SportsRemoteDataSourceImpl implements SportsRemoteDataSource {
               .toList(growable: false);
 
       if (allLeaguesRaw.isNotEmpty) {
-        return allLeaguesRaw;
+        return _applyDefaultSeasons(allLeaguesRaw);
       }
     } catch (_) {
       // Fall back to sport search endpoint below.
@@ -156,7 +295,7 @@ class SportsRemoteDataSourceImpl implements SportsRemoteDataSource {
         (response.data?['countrys'] as List<dynamic>?) ??
         const <dynamic>[];
 
-    return leaguesRaw
+    final leagues = leaguesRaw
         .whereType<Map<String, dynamic>>()
         .map(
           (raw) => LeagueModel.fromJson(
@@ -165,17 +304,8 @@ class SportsRemoteDataSourceImpl implements SportsRemoteDataSource {
           ),
         )
         .toList(growable: false);
-  }
 
-  Future<List<LeagueModel>> _getFeaturedLeaguesForSport(String sportId) async {
-    final ids =
-        ApiConstants.featuredLeagueIdsBySport[sportId] ?? const <String>[];
-    if (ids.isEmpty) return const <LeagueModel>[];
-
-    final leagues = await Future.wait(
-      ids.map(getLeagueById),
-    );
-    return leagues.whereType<LeagueModel>().toList(growable: false);
+    return _applyDefaultSeasons(leagues);
   }
 
   List<LeagueModel> _applyCountryFilter(
@@ -208,7 +338,15 @@ class SportsRemoteDataSourceImpl implements SportsRemoteDataSource {
     }
 
     final raw = leagues.first;
-    return LeagueModel.fromJson(raw);
+    var league = LeagueModel.fromJson(raw);
+    // Apply default season if not provided by API
+    if (league.currentSeason == null || league.currentSeason!.isEmpty) {
+      final defaultSeason = _defaultCurrentSeasons[league.name];
+      if (defaultSeason != null) {
+        league = league.copyWith(currentSeason: defaultSeason) as LeagueModel;
+      }
+    }
+    return league;
   }
 
   @override
@@ -218,7 +356,7 @@ class SportsRemoteDataSourceImpl implements SportsRemoteDataSource {
         .toSet()
         .toList(growable: false);
     final leagues = await Future.wait(allIds.map(getLeagueById));
-    return leagues;
+    return _applyDefaultSeasons(leagues);
   }
 
   Future<String> _resolveSportName(String sportId) async {
@@ -238,4 +376,16 @@ class SportsRemoteDataSourceImpl implements SportsRemoteDataSource {
     return slug;
   }
 
+  /// Applies default current season values to leagues that don't have them.
+  List<LeagueModel> _applyDefaultSeasons(List<LeagueModel> leagues) {
+    return leagues.map((league) {
+      if (league.currentSeason == null || league.currentSeason!.isEmpty) {
+        final defaultSeason = _defaultCurrentSeasons[league.name];
+        if (defaultSeason != null) {
+          return league.copyWith(currentSeason: defaultSeason) as LeagueModel;
+        }
+      }
+      return league;
+    }).toList(growable: false);
+  }
 }

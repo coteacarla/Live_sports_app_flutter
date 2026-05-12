@@ -11,7 +11,12 @@ class GetMatchCommentary {
 	Future<Result<List<Commentary>, Failure>> call(
 		String matchId, {
 		int? since,
+		String? sportId,
 	}) {
-		return _repository.getMatchCommentary(matchId, since: since);
+		return _repository.getMatchCommentary(
+			matchId,
+			since: since,
+			sportId: sportId,
+		);
 	}
 }

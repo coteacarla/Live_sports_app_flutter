@@ -81,5 +81,6 @@ abstract class MatchesRepository {
 	  Future<Result<List<Commentary>, Failure>> getMatchCommentary(
 		String matchId, {
 		int? since,
+		String? sportId,
 	});
 }

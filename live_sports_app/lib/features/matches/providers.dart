@@ -46,13 +46,16 @@ final getMatchCommentaryUseCaseProvider = Provider<GetMatchCommentary>(
   (ref) => GetMatchCommentary(ref.watch(matchesRepositoryProvider)),
 );
 
+
 @riverpod
 class MatchCommentary extends _$MatchCommentary {
   late final String _matchId;
+  String? _sportId;
 
   @override
   Future<List<Commentary>> build(String matchId) async {
     _matchId = matchId;
+    _sportId = await _resolveSportId(matchId);
     return _loadInitialCommentary();
   }
 
@@ -77,20 +80,26 @@ class MatchCommentary extends _$MatchCommentary {
   Future<List<Commentary>> _loadInitialCommentary() async {
     final commentary = await _fetchCommentary();
     if (!ref.mounted) return const [];
-    if (commentary.isNotEmpty) {
-      return commentary;
-    }
-
+    if (commentary.isNotEmpty) return commentary;
     return _fetchFallbackCommentary();
   }
 
   Future<List<Commentary>> _fetchCommentary({int? since}) async {
     if (!ref.mounted) return const [];
     final useCase = ref.read(getMatchCommentaryUseCaseProvider);
-    final result = await useCase(_matchId, since: since);
+    final result = await useCase(_matchId, since: since, sportId: _sportId);
     return result.fold(
       (items) => items,
       (_) => const <Commentary>[],
+    );
+  }
+
+  Future<String?> _resolveSportId(String matchId) async {
+    final repository = ref.read(matchesRepositoryProvider);
+    final result = await repository.getMatchById(matchId);
+    return result.fold(
+      (match) => match.sportId,
+      (_) => null,
     );
   }
 
@@ -140,13 +149,14 @@ class MatchCommentary extends _$MatchCommentary {
         merged.add(item);
       }
     }
-
     if (merged.length != current.length) {
       state = AsyncData(merged);
     }
   }
 
   int? _pollSince(List<Commentary> items) {
+    if (_sportId != null && _sportId != 'football') return null;
+
     final liveItems = items
         .where((item) => !item.id.startsWith('fallback_'))
         .toList(growable: false);
@@ -154,9 +164,7 @@ class MatchCommentary extends _$MatchCommentary {
 
     var latest = liveItems.first.minute;
     for (final item in liveItems.skip(1)) {
-      if (item.minute > latest) {
-        latest = item.minute;
-      }
+      if (item.minute > latest) latest = item.minute;
     }
     return latest;
   }
@@ -168,7 +176,11 @@ class SelectedSportId extends _$SelectedSportId {
   String build() => 'football';
 
   void setSportId(String sportId) {
-    state = _canonicalSportId(sportId);
+    final canonical = _canonicalSportId(sportId);
+    if (canonical == state) return;
+    // Reset league selection whenever the active sport actually changes.
+    ref.read(selectedLeagueIdProvider.notifier).setLeagueId(null);
+    state = canonical;
   }
 }
 
@@ -177,9 +189,17 @@ class SelectedLeagueId extends _$SelectedLeagueId {
   @override
   String? build() => null;
 
-  void setLeagueId(String? leagueId) {
-    state = leagueId;
-  }
+  void setLeagueId(String? leagueId) => state = leagueId;
+}
+
+@Riverpod(keepAlive: true)
+class SelectedDate extends _$SelectedDate {
+  @override
+  DateTime build() => DateTime.now();
+
+  void setDate(DateTime date) => state = date;
+  void goForward() => state = state.add(const Duration(days: 1));
+  void goBack() => state = state.subtract(const Duration(days: 1));
 }
 
 @riverpod
@@ -188,14 +208,13 @@ class LiveMatches extends _$LiveMatches {
   bool _isFetching = false;
   int _buildVersion = 0;
   String _sportId = 'football';
-  String? _leagueId;
 
   @override
   LiveMatchesState build() {
     _buildVersion++;
     final buildVersion = _buildVersion;
     _sportId = _canonicalSportId(ref.watch(selectedSportIdProvider));
-    _leagueId = ref.watch(selectedLeagueIdProvider);
+    ref.watch(selectedLeagueIdProvider);
 
     _pollingTimer?.cancel();
     _isFetching = false;
@@ -227,7 +246,6 @@ class LiveMatches extends _$LiveMatches {
     final sportId = _canonicalSportId(ref.read(selectedSportIdProvider));
     final leagueId = ref.read(selectedLeagueIdProvider);
     _sportId = sportId;
-    _leagueId = leagueId;
 
     if (!silent && state.matches.isEmpty) {
       state = state.copyWith(isLoading: true, errorMessage: null);
@@ -239,9 +257,7 @@ class LiveMatches extends _$LiveMatches {
         sportId: sportId,
       );
 
-      if (buildVersion != _buildVersion) {
-        return;
-      }
+      if (buildVersion != _buildVersion) return;
 
       result.fold(
         (matches) {
@@ -249,7 +265,8 @@ class LiveMatches extends _$LiveMatches {
 
           final previousIds = state.matches.map((m) => m.id).toSet();
           final newlyLive = filtered.where(
-            (m) => m.isLive &&
+            (m) =>
+                m.isLive &&
                 !previousIds.contains(m.id) &&
                 ref.read(matchNotificationPreferencesProvider.notifier).isEnabled(m.id),
           );
@@ -279,19 +296,25 @@ class LiveMatches extends _$LiveMatches {
         },
       );
     } finally {
-      // Ensure fetching flag and loading state are cleared even on unexpected errors
-      if (state.isLoading) {
-        state = state.copyWith(isLoading: false);
-      }
+      if (state.isLoading) state = state.copyWith(isLoading: false);
       _isFetching = false;
-      print('LiveMatches isLoading: ${state.isLoading}');
     }
   }
 
   List<Match> _filterMatches(List<Match> matches) {
+    final nowUtc = DateTime.now().toUtc();
+    final startOfToday = DateTime.utc(nowUtc.year, nowUtc.month, nowUtc.day);
+    final endOfToday = startOfToday.add(const Duration(days: 1));
+
     return matches
-        .where((m) =>
-            m.sportId.toLowerCase() == _sportId.toLowerCase() && m.isLive)
+        .where((m) {
+          if (m.sportId.toLowerCase() != _sportId.toLowerCase()) return false;
+          if (m.isLive) return true;
+          if (!m.isScheduled) return false;
+          // Only upcoming fixtures for today, not future days.
+          return !m.scheduledAt.isBefore(startOfToday) &&
+              m.scheduledAt.isBefore(endOfToday);
+        })
         .toList(growable: false);
   }
 }
@@ -302,6 +325,7 @@ class Results extends _$Results {
   int _buildVersion = 0;
   String _sportId = 'football';
   String? _leagueId;
+  late DateTime _selectedDate;
 
   @override
   ResultsState build() {
@@ -309,6 +333,7 @@ class Results extends _$Results {
     final buildVersion = _buildVersion;
     _sportId = _canonicalSportId(ref.watch(selectedSportIdProvider));
     _leagueId = ref.watch(selectedLeagueIdProvider);
+    _selectedDate = ref.watch(selectedDateProvider);
 
     _isFetching = false;
     Future.microtask(() => unawaited(_fetchResults(silent: false, buildVersion: buildVersion)));
@@ -332,27 +357,49 @@ class Results extends _$Results {
       );
     }
 
+    // Compute start/end of the selected day in UTC for filtering.
+    final dayUtc = DateTime.utc(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+    );
+    final endOfDayUtc = dayUtc.add(const Duration(days: 1)).subtract(const Duration(milliseconds: 1));
+
     final getScheduledMatches = ref.read(getScheduledMatchesUseCaseProvider);
     final getPastMatches = ref.read(getPastMatchesUseCaseProvider);
 
+    // Snapshot previous data so we can preserve it on network failure.
+    final prevScheduled = state.scheduledMatches;
+    final prevPast = state.pastMatches;
+
     try {
       final scheduledResult = await _loadSection(
+        previousMatches: prevScheduled,
         fetch: (sportId, leagueId) => getScheduledMatches(
           pagination: const PaginationParams(page: 1, perPage: 30),
-          filters: MatchFilters(sportId: sportId, leagueId: leagueId),
+          filters: MatchFilters(
+            sportId: sportId,
+            leagueId: leagueId,
+            from: dayUtc,
+            to: endOfDayUtc,
+          ),
         ),
       );
 
       final pastResult = await _loadSection(
+        previousMatches: prevPast,
         fetch: (sportId, leagueId) => getPastMatches(
           pagination: const PaginationParams(page: 1, perPage: 30),
-          filters: MatchFilters(sportId: sportId, leagueId: leagueId),
+          filters: MatchFilters(
+            sportId: sportId,
+            leagueId: leagueId,
+            from: dayUtc,
+            to: endOfDayUtc,
+          ),
         ),
       );
 
-      if (buildVersion != _buildVersion) {
-        return;
-      }
+      if (buildVersion != _buildVersion) return;
 
       state = state.copyWith(
         scheduledMatches: scheduledResult.matches,
@@ -363,32 +410,21 @@ class Results extends _$Results {
         lastUpdated: DateTime.now().toUtc(),
       );
     } finally {
-      if (state.isLoading) {
-        state = state.copyWith(isLoading: false);
-      }
+      if (state.isLoading) state = state.copyWith(isLoading: false);
       _isFetching = false;
-      print('Results isLoading: ${state.isLoading}');
     }
   }
 
+  /// Fetches one section (scheduled or past). On network failure it preserves
+  /// [previousMatches] so the screen never blanks out on a transient error.
   Future<({String? errorMessage, List<Match> matches})> _loadSection({
     required Future<Result<List<Match>, Failure>> Function(String, String?) fetch,
+    required List<Match> previousMatches,
   }) async {
-    final primaryResult = await fetch(_sportId, _leagueId);
-
-    final primaryMatches = primaryResult.fold(
-      (matches) => matches,
-      (_) => const <Match>[],
-    );
-
-    if (primaryMatches.isNotEmpty) {
-      return (errorMessage: null, matches: primaryMatches);
-    }
-
-    final fallbackResult = await fetch(_sportId, null);
-    return fallbackResult.fold(
+    final result = await fetch(_sportId, _leagueId);
+    return result.fold(
       (matches) => (errorMessage: null, matches: matches),
-      (failure) => (errorMessage: failure.message, matches: const <Match>[]),
+      (failure) => (errorMessage: failure.message, matches: previousMatches),
     );
   }
 }
@@ -455,10 +491,7 @@ class MatchDetail extends _$MatchDetail {
   }
 }
 
-
 String _canonicalSportId(String value) {
-  if (value.toLowerCase() == 'soccer') {
-    return 'football';
-  }
+  if (value.toLowerCase() == 'soccer') return 'football';
   return value.toLowerCase();
 }

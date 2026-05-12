@@ -3,17 +3,19 @@ class ApiConstants {
 
   static const baseUrl = String.fromEnvironment(
     'SPORTS_API_BASE_URL',
-    defaultValue: 'https://www.thesportsdb.com/api/v1/json/3', // '3' is a common public test key
+    defaultValue: 'https://www.thesportsdb.com/api/v1/json/3',
   );
 
   static const requestTimeoutSeconds = 15;
 
-  // ESPN public scoreboard feeds for live coverage (no API key required).
+  // ESPN public scoreboard feeds — top 4 (or more) live endpoints per sport.
   static const espnLiveEndpointsBySport = <String, List<String>>{
     'football': [
       'https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard',
       'https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1/scoreboard',
       'https://site.api.espn.com/apis/site/v2/sports/soccer/ger.1/scoreboard',
+      'https://site.api.espn.com/apis/site/v2/sports/soccer/ita.1/scoreboard',
+      'https://site.api.espn.com/apis/site/v2/sports/soccer/fra.1/scoreboard',
     ],
     'basketball': [
       'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard',
@@ -26,41 +28,70 @@ class ApiConstants {
       'https://site.api.espn.com/apis/site/v2/sports/tennis/wta/scoreboard',
     ],
     'volleyball': [
-      'https://site.api.espn.com/apis/site/v2/sports/volleyball/womens-college-volleyball/scoreboard',
-      'https://site.api.espn.com/apis/site/v2/sports/volleyball/mens-college-volleyball/scoreboard',
       'https://site.api.espn.com/apis/site/v2/sports/volleyball/fivb-volleyball-womens/scoreboard',
       'https://site.api.espn.com/apis/site/v2/sports/volleyball/fivb-volleyball-mens/scoreboard',
+      'https://site.api.espn.com/apis/site/v2/sports/volleyball/womens-college-volleyball/scoreboard',
+      'https://site.api.espn.com/apis/site/v2/sports/volleyball/mens-college-volleyball/scoreboard',
     ],
   };
 
-  // TheSportsDB league IDs scoped per sport for schedule/results pull.
+  // Maps every display league name to its ESPN endpoint slug.
+  // Used by LeagueFilterBar to build the exact URL when a chip is tapped.
+  static const leagueNameToEspnEndpointSlug = <String, String>{
+    // ── Football / Soccer ──────────────────────────────────────────────────
+    'Premier League':       'soccer/eng.1',
+    'La Liga':              'soccer/esp.1',
+    'Bundesliga':           'soccer/ger.1',
+    'Serie A':              'soccer/ita.1',
+    'Serie A TIM':          'soccer/ita.1',
+    'Ligue 1':              'soccer/fra.1',
+    'Championship':         'soccer/eng.2',
+    'Scottish Premier League': 'soccer/sco.1',
+    'Scottish Championship':   'soccer/sco.2',
+    'Eredivisie':           'soccer/ned.1',
+    'Primeira Liga':        'soccer/por.1',
+    'Liga Portugal Bwin':   'soccer/por.1',
+    'Super Lig':            'soccer/tur.1',
+    'Süper Lig':            'soccer/tur.1',
+
+    // ── Basketball ─────────────────────────────────────────────────────────
+    'NBA':                        'basketball/nba',
+    'WNBA':                       'basketball/wnba',
+    'NCAA Men\'s Basketball':     'basketball/mens-college-basketball',
+    'NCAA Women\'s Basketball':   'basketball/womens-college-basketball',
+
+    // ── Tennis ─────────────────────────────────────────────────────────────
+    'ATP Tour':  'tennis/atp',
+    'WTA Tour':  'tennis/wta',
+
+    // ── Volleyball ─────────────────────────────────────────────────────────
+    'FIVB Women\'s Nations League': 'volleyball/fivb-volleyball-womens',
+    'FIVB Men\'s Nations League':   'volleyball/fivb-volleyball-mens',
+    'NCAA Women\'s Volleyball':     'volleyball/womens-college-volleyball',
+    'NCAA Men\'s Volleyball':       'volleyball/mens-college-volleyball',
+  };
+
+  // TheSportsDB league IDs used for schedule/results fallback.
   static const featuredLeagueIdsBySport = <String, List<String>>{
     'football': [
       '4328', // EPL
       '4335', // La Liga
       '4331', // Bundesliga
-      '4346', // American MLS
+      '4346', // MLS
     ],
     'basketball': [
       '4387', // NBA
       '4389', // WNBA
       '4391', // NCAA Men's
       '4394', // EuroLeague
-      '4401', // Spanish Liga ACB
     ],
     'tennis': [
       '4516', // ATP Tour
       '4517', // WTA Tour
-      '4473', // French Open
-      '4474', // US Open
-      '4475', // Wimbledon
-      '4476', // Australian Open
     ],
     'volleyball': [
       '4520', // FIVB Nations League (Men)
       '4521', // FIVB Nations League (Women)
-      '4503', // Italian SuperLega
-      '4505', // Polish PlusLiga
     ],
   };
 }

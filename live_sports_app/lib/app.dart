@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'features/matches/domain/entities/match.dart' as ent;
-import 'features/matches/screens/live_matches_screen.dart';
-import 'features/matches/screens/match_detail_screen.dart';
-import 'features/matches/screens/results_screen.dart';
-import 'features/sports/screens/sports_screen.dart';
+import 'features/matches/presentation/screens/live_matches_screen.dart';
+import 'features/matches/presentation/screens/match_detail_screen.dart';
+import 'features/matches/presentation/screens/results_screen.dart';
+import 'features/sports/presentation/screens/sports_screen.dart';
 
 class LiveSportsApp extends StatelessWidget {
 	const LiveSportsApp({super.key});

@@ -203,6 +203,58 @@ abstract class _$SelectedLeagueId extends $Notifier<String?> {
   }
 }
 
+@ProviderFor(SelectedDate)
+final selectedDateProvider = SelectedDateProvider._();
+
+final class SelectedDateProvider
+    extends $NotifierProvider<SelectedDate, DateTime> {
+  SelectedDateProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'selectedDateProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$selectedDateHash();
+
+  @$internal
+  @override
+  SelectedDate create() => SelectedDate();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(DateTime value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<DateTime>(value),
+    );
+  }
+}
+
+String _$selectedDateHash() => r'b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2';
+
+abstract class _$SelectedDate extends $Notifier<DateTime> {
+  DateTime build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<DateTime, DateTime>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<DateTime, DateTime>,
+              DateTime,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
+
 @ProviderFor(LiveMatches)
 final liveMatchesProvider = LiveMatchesProvider._();
 

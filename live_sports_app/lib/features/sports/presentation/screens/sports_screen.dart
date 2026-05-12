@@ -1,28 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/widgets/async_state_view.dart';
-import '../matches/providers.dart';
-import 'domain/entities/league.dart';
-import 'domain/entities/sport.dart';
-import 'presentation/widgets/league_list_item.dart';
-import 'presentation/widgets/sport_category_tile.dart';
-import 'providers.dart';
+import '../../../../core/widgets/async_state_view.dart';
+import '../../../matches/providers.dart';
+import '../../domain/entities/league.dart';
+import '../../domain/entities/sport.dart';
+import '../../providers.dart';
+import '../widgets/league_list_item.dart';
+import '../widgets/sport_category_tile.dart';
 
-// ─────────────────────────────────────────────────────────────────────────
-// SPORTS VIEW
-// ─────────────────────────────────────────────────────────────────────────
+class SportsScreen extends StatelessWidget {
+  const SportsScreen({super.key});
 
-/// Displays available sports and leagues for the selected sport.
-/// Used to filter matches in the Matches feature.
-class SportsView extends ConsumerWidget {
-  const SportsView({super.key});
+  @override
+  Widget build(BuildContext context) => const _SportsView();
+}
+
+class _SportsView extends ConsumerWidget {
+  const _SportsView();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(sportsProvider);
     final notifier = ref.read(sportsProvider.notifier);
-
     final selectedSportId = ref.watch(selectedSportIdProvider);
 
     final mq = MediaQuery.of(context);
@@ -38,33 +38,29 @@ class SportsView extends ConsumerWidget {
             SliverPadding(
               padding: const EdgeInsets.all(16),
               sliver: SliverList(
-                delegate: SliverChildListDelegate(
-                  [
-                    Text('Sports', style: Theme.of(context).textTheme.headlineMedium),
-                    SizedBox(height: spacingSmall),
-                    SizedBox(
-                      height: sportsSectionHeight,
-                      child: _SportsSection(
-                        sports: state.sports,
-                        isLoading: state.isLoadingSports,
-                        errorMessage: state.sportsErrorMessage,
-                        selectedSportId: selectedSportId,
-                        onSelectSport: (sport) {
-                          ref.read(selectedSportIdProvider.notifier).setSportId(sport.slug);
-                          ref.read(selectedLeagueIdProvider.notifier).setLeagueId(null);
-                        },
-                        onRetry: () => notifier.refresh(),
-                      ),
+                delegate: SliverChildListDelegate([
+                  Text('Sports', style: Theme.of(context).textTheme.headlineMedium),
+                  SizedBox(height: spacingSmall),
+                  SizedBox(
+                    height: sportsSectionHeight,
+                    child: _SportsSection(
+                      sports: state.sports,
+                      isLoading: state.isLoadingSports,
+                      errorMessage: state.sportsErrorMessage,
+                      selectedSportId: selectedSportId,
+                      onSelectSport: (sport) {
+                        ref.read(selectedSportIdProvider.notifier).setSportId(sport.slug);
+                        ref.read(selectedLeagueIdProvider.notifier).setLeagueId(null);
+                      },
+                      onRetry: () => notifier.refresh(),
                     ),
-                    SizedBox(height: spacing),
-                    Text('Leagues', style: Theme.of(context).textTheme.titleLarge),
-                    SizedBox(height: spacingSmall),
-                  ],
-                ),
+                  ),
+                  SizedBox(height: spacing),
+                  Text('Leagues', style: Theme.of(context).textTheme.titleLarge),
+                  SizedBox(height: spacingSmall),
+                ]),
               ),
             ),
-
-            // Leagues list as a sliver for lazy rendering
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               sliver: SliverToBoxAdapter(
@@ -82,10 +78,6 @@ class SportsView extends ConsumerWidget {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────
-// PRIVATE WIDGETS
-// ─────────────────────────────────────────────────────────────────────────
 
 class _SportsSection extends StatelessWidget {
   const _SportsSection({
@@ -168,16 +160,53 @@ class _LeaguesSection extends StatelessWidget {
   final List<League> leagues;
   final VoidCallback onRetry;
 
+  // Whitelist of major leagues to display
+  static const Set<String> _featuredLeagueNames = {
+    // Football
+    'Premier League',
+    'La Liga',
+    'Serie A',
+    'Serie A TIM',
+    'Bundesliga',
+    'Ligue 1',
+    'Championship',
+    'Scottish Premier League',
+    'Scottish Championship',
+    'Eredivisie',
+    'Primeira Liga',
+    'Liga Portugal Bwin',
+    'Super Lig',
+    'Süper Lig',
+    // Basketball
+    'NBA',
+    'WNBA',
+    "NCAA Men's Basketball",
+    "NCAA Women's Basketball",
+    // Tennis
+    'ATP Tour',
+    'WTA Tour',
+    // Volleyball
+    "FIVB Women's Nations League",
+    "FIVB Men's Nations League",
+    "NCAA Women's Volleyball",
+    "NCAA Men's Volleyball",
+  };
+
   @override
   Widget build(BuildContext context) {
-    if (isLoading && leagues.isEmpty) {
+    // Filter to only show whitelisted leagues
+    final filteredLeagues = leagues
+        .where((league) => _featuredLeagueNames.contains(league.name))
+        .toList();
+
+    if (isLoading && filteredLeagues.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
         child: AsyncStateView.loading(message: 'Loading leagues...'),
       );
     }
 
-    if (errorMessage != null && leagues.isEmpty) {
+    if (errorMessage != null && filteredLeagues.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 24),
         child: AsyncStateView.error(
@@ -188,15 +217,15 @@ class _LeaguesSection extends StatelessWidget {
       );
     }
 
-    if (leagues.isEmpty) {
+    if (filteredLeagues.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
-        child: Text('No leagues found for this sport.'),
+        child: Text('No featured leagues found for this sport.'),
       );
     }
 
     return Column(
-      children: leagues
+      children: filteredLeagues
           .map(
             (league) => Padding(
               padding: const EdgeInsets.only(bottom: 8),

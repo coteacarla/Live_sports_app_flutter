@@ -15,6 +15,9 @@ _EspnScoreboardResponse _$EspnScoreboardResponseFromJson(
   //   3. Top-level leagues: { "leagues": [{ "events": [...] }] }
   final rawEvents = <dynamic>[];
 
+  // Capture root-level league for enriching synthetic match events (tennis/golf).
+  Map<String, dynamic>? rootLeague;
+
   if (json['events'] is List) {
     rawEvents.addAll(json['events'] as List);
   }
@@ -22,6 +25,7 @@ _EspnScoreboardResponse _$EspnScoreboardResponseFromJson(
   void collectFromLeagueList(List<dynamic> leagues) {
     for (final league in leagues) {
       if (league is! Map) continue;
+      rootLeague ??= league.cast<String, dynamic>();
       final events = league['events'];
       if (events is List) rawEvents.addAll(events);
     }
@@ -37,10 +41,40 @@ _EspnScoreboardResponse _$EspnScoreboardResponseFromJson(
 
   if (json['leagues'] is List) {
     collectFromLeagueList(json['leagues'] as List);
+    if (rootLeague == null) {
+      for (final l in json['leagues'] as List) {
+        if (l is Map) { rootLeague = l.cast<String, dynamic>(); break; }
+      }
+    }
+  }
+
+  // Expand tournament events that use groupings (tennis, golf) into individual
+  // match events. Such events have no direct competitions array.
+  final expanded = <dynamic>[];
+  for (final rawEvent in rawEvents) {
+    if (rawEvent is! Map) { expanded.add(rawEvent); continue; }
+    final groupings = rawEvent['groupings'];
+    if (groupings is! List || groupings.isEmpty) {
+      expanded.add(rawEvent);
+      continue;
+    }
+    for (final grouping in groupings) {
+      if (grouping is! Map) continue;
+      final comps = grouping['competitions'];
+      if (comps is! List) continue;
+      for (final comp in comps) {
+        if (comp is! Map) continue;
+        expanded.add(_buildGroupingMatchEvent(
+          rawEvent.cast<String, dynamic>(),
+          comp.cast<String, dynamic>(),
+          rootLeague: rootLeague,
+        ));
+      }
+    }
   }
 
   return _EspnScoreboardResponse(
-    events: rawEvents.expand((e) {
+    events: expanded.expand((e) {
       try {
         return [EspnEvent.fromJson(e as Map<String, dynamic>)];
       } catch (_) {
@@ -48,6 +82,78 @@ _EspnScoreboardResponse _$EspnScoreboardResponseFromJson(
       }
     }).toList(),
   );
+}
+
+/// Builds a synthetic EspnEvent-shaped map for a single competition
+/// extracted from a tournament event's groupings (tennis, golf, etc.).
+Map<String, dynamic> _buildGroupingMatchEvent(
+  Map<String, dynamic> rawTournament,
+  Map<String, dynamic> comp, {
+  Map<String, dynamic>? rootLeague,
+}) {
+  final competitors = comp['competitors'];
+  String name = '';
+  if (competitors is List && competitors.length >= 2) {
+    final c0 = competitors[0] is Map ? competitors[0] as Map : null;
+    final c1 = competitors[1] is Map ? competitors[1] as Map : null;
+    final n0 = _groupingCompetitorName(c0);
+    final n1 = _groupingCompetitorName(c1);
+    if (n0.isNotEmpty && n1.isNotEmpty) name = '$n0 vs. $n1';
+  }
+
+  // Enrich each competitor with a synthetic integer score (sets won) so the
+  // existing score parser can display a meaningful value.
+  List<dynamic> enrichedCompetitors = const [];
+  if (competitors is List) {
+    enrichedCompetitors = competitors.map((c) {
+      if (c is! Map) return c;
+      final setsWon = _groupingSetsWon(c['linescores']);
+      return <String, dynamic>{
+        ...c.cast<String, dynamic>(),
+        if (setsWon != null) 'score': setsWon,
+      };
+    }).toList(growable: false);
+  }
+
+  return <String, dynamic>{
+    'id': (comp['id'] ?? rawTournament['id'] ?? '').toString(),
+    'date': (comp['date'] ?? comp['startDate'] ?? rawTournament['date'] ?? '').toString(),
+    'name': name.isEmpty ? (rawTournament['name'] ?? '') : name,
+    'status': comp['status'],
+    'competitions': <dynamic>[
+      <String, dynamic>{
+        ...comp,
+        'competitors': enrichedCompetitors,
+      }
+    ],
+    if (rootLeague != null) 'league': rootLeague,
+    'links': rawTournament['links'] ?? const <dynamic>[],
+  };
+}
+
+/// Extracts a display name for a competition-level competitor.
+/// Handles the individual-sport pattern where names are under [competitor.athlete].
+String _groupingCompetitorName(Map? c) {
+  if (c == null) return '';
+  final athlete = c['athlete'];
+  if (athlete is Map) {
+    for (final key in const ['displayName', 'fullName', 'shortName']) {
+      final v = athlete[key];
+      if (v is String && v.isNotEmpty) return v;
+    }
+  }
+  for (final key in const ['displayName', 'fullName', 'name']) {
+    final v = c[key];
+    if (v is String && v.isNotEmpty) return v;
+  }
+  return '';
+}
+
+/// Returns the number of completed sets won by this competitor,
+/// derived from [linescores] entries where winner == true.
+int? _groupingSetsWon(dynamic linescores) {
+  if (linescores is! List || linescores.isEmpty) return null;
+  return linescores.whereType<Map>().where((ls) => ls['winner'] == true).length;
 }
 
 Map<String, dynamic> _$EspnScoreboardResponseToJson(

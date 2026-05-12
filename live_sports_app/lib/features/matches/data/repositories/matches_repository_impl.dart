@@ -19,23 +19,13 @@ class MatchesRepositoryImpl implements MatchesRepository {
   final MatchesRemoteDataSource _remoteDataSource;
   final NetworkInfo _networkInfo;
 
-  List<T> _mapSafe<TModel, T>(
-    List<TModel> items,
-    T Function(TModel) convert,
-    String label,
-  ) {
+  List<T> _mapSafe<TModel, T>(List<TModel> items, T Function(TModel) convert) {
     final results = <T>[];
-    var parsed = 0;
     for (final item in items) {
       try {
         results.add(convert(item));
-        parsed++;
-      } catch (e, st) {
-        print('Parsing error for match: $e');
-        print(st);
-      }
+      } catch (_) {}
     }
-    print('Parsed $parsed matches successfully');
     return results;
   }
 
@@ -68,7 +58,7 @@ class MatchesRepositoryImpl implements MatchesRepository {
   Future<Result<List<Match>, Failure>> getLiveMatches({String? sportId}) {
     return _guard(() async {
       final items = await _remoteDataSource.getLiveMatches(sportId: sportId);
-      return _mapSafe(items, (item) => item.toDomain(), 'match');
+      return _mapSafe(items, (item) => item.toDomain());
     });
   }
 
@@ -82,7 +72,7 @@ class MatchesRepositoryImpl implements MatchesRepository {
         leagueId,
         sportId: sportId,
       );
-      return _mapSafe(items, (item) => item.toDomain(), 'match');
+      return _mapSafe(items, (item) => item.toDomain());
     });
   }
 
@@ -96,7 +86,7 @@ class MatchesRepositoryImpl implements MatchesRepository {
         pagination: pagination,
         filters: filters,
       );
-      return _mapSafe(items, (item) => item.toDomain(), 'match');
+      return _mapSafe(items, (item) => item.toDomain());
     });
   }
 
@@ -110,7 +100,7 @@ class MatchesRepositoryImpl implements MatchesRepository {
         pagination: pagination,
         filters: filters,
       );
-      return _mapSafe(items, (item) => item.toDomain(), 'match');
+      return _mapSafe(items, (item) => item.toDomain());
     });
   }
 
@@ -118,7 +108,7 @@ class MatchesRepositoryImpl implements MatchesRepository {
   Future<Result<List<Match>, Failure>> getMatchesByDate(DateTime date) {
     return _guard(() async {
       final items = await _remoteDataSource.getMatchesByDate(date);
-      return _mapSafe(items, (item) => item.toDomain(), 'match');
+      return _mapSafe(items, (item) => item.toDomain());
     });
   }
 
@@ -139,11 +129,13 @@ class MatchesRepositoryImpl implements MatchesRepository {
   Future<Result<List<Commentary>, Failure>> getMatchCommentary(
     String matchId, {
     int? since,
+    String? sportId,
   }) {
     return _guard(() async {
       final items = await _remoteDataSource.getMatchCommentary(
         matchId,
         since: since,
+        sportId: sportId,
       );
       return items.map((item) => item.toDomain()).toList(growable: false);
     });

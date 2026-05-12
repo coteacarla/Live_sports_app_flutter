@@ -137,4 +137,3 @@ class Sports extends _$Sports {
     _isFetching = false;
   }
 }
-      String? leaguesError;
