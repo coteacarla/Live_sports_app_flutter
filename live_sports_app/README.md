@@ -1,17 +1,35 @@
-# live_sports_app
+# Live Sports Tracker
 
-A new Flutter project.
+This directory contains the Flutter application for browsing live scores, fixtures, results, and match commentary across Football, Basketball, Volleyball, and Hockey.
 
-## Getting Started
+See the [repository README](../README.md) for the full project overview, setup instructions, architecture summary, data sources, and validation commands.
 
-This project is a starting point for a Flutter application.
+## Quick Start
 
-A few resources to get you started if this is your first Flutter project:
+```bash
+flutter pub get
+flutter run
+```
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## Useful Commands
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+# Regenerate Riverpod and JSON/model code
+dart run build_runner build --delete-conflicting-outputs
+
+# Check and test the app
+flutter analyze
+flutter test
+```
+
+## Main Screens
+
+- **Sports**: browse sports and leagues.
+- **Live**: follow currently live matches with automatic refresh.
+- **Results**: browse completed or scheduled matches by date.
+- **Match details**: inspect commentary and key events.
+
+## More Documentation
+
+- [Architecture and code documentation](ARCHITECTURE.md)
+- [Foundation architecture notes](docs/architecture/phase_1_foundation.md)
